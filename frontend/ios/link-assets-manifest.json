@@ -1,0 +1,13 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/Karla.ttf",
+      "sha1": "fa38f912d61efb17eefd83a57b321d0543058a21"
+    },
+    {
+      "path": "src/assets/fonts/Montserrat.ttf",
+      "sha1": "a917c65005395d25b01713c6e4d6eae54fb80ad1"
+    }
+  ]
+}

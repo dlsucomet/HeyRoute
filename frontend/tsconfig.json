@@ -1,0 +1,9 @@
+{
+  "extends": "@react-native/typescript-config",
+  "include": ["**/*.ts", "**/*.tsx", "src/components/map-view-component.jsx"],
+  "exclude": ["**/node_modules", "**/Pods"],
+  "compilerOptions": {
+    "typeRoots": ["./@types", "./node_modules/@types"],
+    "jsx": "react-native"
+  }
+}

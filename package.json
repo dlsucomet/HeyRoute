@@ -1,0 +1,9 @@
+{
+  "devDependencies": {
+    "@react-native-community/cli": "^20.1.1"
+  },
+  "dependencies": {
+    "react-native-uuid": "^2.0.3",
+    "vexo-analytics": "^1.5.3"
+  }
+}
