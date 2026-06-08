@@ -784,8 +784,8 @@ async def detect_intent(latest_input, mode, conversation_history, semantic_conte
             error_type=type(e).__name__,
             payload={"raw_gpt_output": raw_intents, "mode": mode}
         ))
-        return {k: False for k in ["clarifications","cancellation","generate_routes","trip_changes"
-                                   "start_nav","request_alternates","select_route"]}, intent_detect_latency
+        return {k: False for k in ["clarifications","cancellation","generate_routes","trip_changes",
+                       "start_nav","request_alternates","select_route"]}, intent_detect_latency
 
 async def resolve_semantic_places(user_input: str, semantic_context: dict, user_id: str):
     """
@@ -827,39 +827,101 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
     """
     routes_data = []
     ors_latency = 0.0
-    try:
-        routes_data, ors_latency = await adapter.get_directions(
-            origin=origin,
-            destination=destination,
-            option=option,
-            via=via,
-            avoid_roads=avoid_roads,
-            avoid_features=avoid_features
+    normalized_option = (option or "recommended").strip().lower()
+    if normalized_option not in {"recommended", "fastest", "shortest"}:
+        normalized_option = "recommended"
+
+    attempts = [
+        {
+            "label": "primary",
+            "via": via,
+            "avoid_roads": avoid_roads,
+            "avoid_features": avoid_features,
+        }
+    ]
+
+    if avoid_roads or avoid_features:
+        attempts.append(
+            {
+                "label": "retry_without_avoid",
+                "via": via,
+                "avoid_roads": [],
+                "avoid_features": [],
+            }
         )
-        # THE GUARD: If no routes were found, stop and inform the user immediately
-        if not routes_data or len(routes_data) == 0:
-            response = "I found the locations, but I couldn't find a drivable route between them."
-            return [], {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
-        
-        # Check if the adapter returned an internal error dict instead of raising an exception
-        if isinstance(routes_data, dict) and "error" in routes_data:
-            raise Exception(routes_data["error"])
-        
-    except Exception as e:
-        # FAILSAFE: Handle ORS Down / Connection Refused
-        asyncio.create_task(log_system_error(
-            user_id=user_id,
-            session_id=session_id,
-            function_name="generate_route_exception",
-            error_msg=str(e),
-            error_type=type(e).__name__,
-            payload={"routes_data": routes_data, "ors_latency": ors_latency}
-        ))
-        response = (
-            "I'm sorry, I'm having trouble connecting to the server right now. "
-            "Please try again later."
+
+    if via:
+        attempts.append(
+            {
+                "label": "retry_without_via",
+                "via": [],
+                "avoid_roads": [],
+                "avoid_features": [],
+            }
         )
-        return {"error": str(e)}, {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
+
+    for attempt in attempts:
+        try:
+            routes_data, ors_latency = await adapter.get_directions(
+                origin=origin,
+                destination=destination,
+                option=normalized_option,
+                via=attempt["via"],
+                avoid_roads=attempt["avoid_roads"],
+                avoid_features=attempt["avoid_features"],
+            )
+        except Exception as e:
+            asyncio.create_task(
+                log_system_error(
+                    user_id=user_id,
+                    session_id=session_id,
+                    function_name="generate_route_exception",
+                    error_msg=str(e),
+                    error_type=type(e).__name__,
+                    payload={
+                        "attempt": attempt["label"],
+                        "origin": origin,
+                        "destination": destination,
+                        "option": normalized_option,
+                        "via": attempt["via"],
+                        "avoid_roads": attempt["avoid_roads"],
+                        "avoid_features": attempt["avoid_features"],
+                        "ors_latency": ors_latency,
+                    },
+                )
+            )
+            response = (
+                "I'm sorry, I'm having trouble connecting to the routing service right now. "
+                "Please try again later."
+            )
+            return {"error": str(e)}, {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
+
+        if routes_data:
+            break
+
+        asyncio.create_task(
+            log_system_error(
+                user_id=user_id,
+                session_id=session_id,
+                function_name="generate_route_no_results",
+                error_msg="No routes returned from ORS for this attempt",
+                error_type="NoRouteFound",
+                payload={
+                    "attempt": attempt["label"],
+                    "origin": origin,
+                    "destination": destination,
+                    "option": normalized_option,
+                    "via": attempt["via"],
+                    "avoid_roads": attempt["avoid_roads"],
+                    "avoid_features": attempt["avoid_features"],
+                    "ors_latency": ors_latency,
+                },
+            )
+        )
+
+    if not routes_data:
+        response = "I found the locations, but I couldn't find a drivable route between them."
+        return [], {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
     
     primary_route = routes_data[0] if routes_data else {}
     if road:
@@ -873,7 +935,7 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
     route_summary = {
         "origin": origin,
         "destination": destination,
-        "option": option,
+        "option": normalized_option,
         "via": primary_route.get("via"),
         "distance": primary_route.get("distance"),
         "duration": primary_route.get("duration")
@@ -886,7 +948,7 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
             event_type="ROUTE_GENERATED",
             origin=origin,
             destination=destination,
-            option=option,
+            option=normalized_option,
             via=route.get("via"),
             distance=route.get("distance"),
             duration=route.get("duration")

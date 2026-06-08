@@ -35,9 +35,10 @@ async def store_audio_file(file_path: str, file_content: bytes):
     """
 
     try:
+        normalized_file_path = file_path.replace("\\", "/")
         # We specify the content_type so the browser knows it's audio later
         response = supabase.storage.from_("voice_logs").upload(
-            path=file_path,
+            path=normalized_file_path,
             file=file_content,
             file_options={"content-type": "audio/wav", "upsert": "true"}
         )

@@ -369,7 +369,7 @@ class OpenRouteServiceAdapter(APIAdapter):
     async def get_directions(self, 
                        origin: dict, 
                        destination: dict, 
-                       option: dict, 
+                       option: str, 
                        via: List[dict] = None, 
                        avoid_roads: List[str] = None,
                        avoid_features: List[str] = None
@@ -387,10 +387,14 @@ class OpenRouteServiceAdapter(APIAdapter):
             coords.extend([[v["lng"], v["lat"]] for v in via])
         coords.append([destination["lng"], destination["lat"]])
 
+        normalized_option = (option or "recommended").strip().lower()
+        if normalized_option not in {"recommended", "fastest", "shortest"}:
+            normalized_option = "recommended"
+
         payload = {
             "coordinates": coords,
             "instructions": True,
-            "preference": option
+            "preference": normalized_option
         }
 
         # Request alternative routes if no waypoints included
@@ -418,16 +422,32 @@ class OpenRouteServiceAdapter(APIAdapter):
         }
         start_time = time.perf_counter()
         resp = await self.client.post(self.directions_url, json=payload, headers=headers)
-
-        data = resp.json()
         end_time = time.perf_counter()
         ors_ms = (end_time - start_time) * 1000
+
+        if resp.status_code != 200:
+            error_detail = resp.text
+            try:
+                error_data = resp.json()
+                if isinstance(error_data, dict):
+                    error_obj = error_data.get("error", {})
+                    error_detail = error_obj.get("message") or str(error_data)
+                else:
+                    error_detail = str(error_data)
+            except Exception:
+                pass
+            raise RuntimeError(f"ORS directions failed ({resp.status_code}): {error_detail}")
+
+        data = resp.json()
 
         routes_output = []
         for route in data.get("routes", []):
             # Decode the geometry to get all points
             encoded_geom = route.get("geometry")
             full_coords = []
+            matching_coords = []
+            mapbox_waypoints = []
+            turn_indices = []
 
             # Decode polyline into coordinates
             if encoded_geom:

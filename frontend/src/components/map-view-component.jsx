@@ -273,13 +273,19 @@ const MapViewComponent = (props) => {
 
     if (!previewMode && matchingCoords) return;
 
+    const normalizedStart = typeof start === "string" ? start.trim() : "";
+    if (!normalizedStart) {
+      console.log("[MapViewComponent] Skipping start geocode because start is empty.");
+      return;
+    }
+
     // Geocode start address if it's not a current location placeholder
     const geocodeStart = async () => {
-      console.log(`[MapViewComponent] Geocoding start address: ${start}`);
+      console.log(`[MapViewComponent] Geocoding start address: ${normalizedStart}`);
       try {
         const res = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-            start
+            normalizedStart
           )}&key=${GOOGLE_API_KEY}`
         );
 

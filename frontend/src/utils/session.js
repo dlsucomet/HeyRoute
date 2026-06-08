@@ -18,10 +18,14 @@ const TIMEOUT = 30 * 60 * 1000; // 30 minutes
 // Persistent Device ID
 export const initDeviceId = async () => {
   const existing = await AsyncStorage.getItem(DEVICE_ID);
-  if (existing) return existing;
+  if (existing) {
+    console.log("[Session] initDeviceId existing:", existing);
+    return existing;
+  }
 
   const id = uuid.v4();
   await AsyncStorage.setItem(DEVICE_ID, id);
+  console.log("[Session] initDeviceId created:", id);
   return id;
 };
 
@@ -30,6 +34,12 @@ export const startNewSessionIfNeeded = async () => {
   const now = Date.now();
   const last = await AsyncStorage.getItem(LAST_ACTIVE);
   const existingSession = await AsyncStorage.getItem(SESSION_ID);
+
+  console.log("[Session] startNewSessionIfNeeded current:", {
+    existingSession,
+    last,
+    now,
+  });
 
   // Create new session if:
   // - No session yet
@@ -43,11 +53,14 @@ export const startNewSessionIfNeeded = async () => {
       [LAST_ACTIVE, now.toString()],
     ]);
 
+    console.log("[Session] startNewSessionIfNeeded created:", newSession);
+
     return newSession;
   }
 
   // Otherwise refresh activity timestamp
   await AsyncStorage.setItem(LAST_ACTIVE, now.toString());
+  console.log("[Session] startNewSessionIfNeeded reused:", existingSession);
   return existingSession;
 };
 
@@ -58,5 +71,7 @@ export const endSession = async () => {
 
 // Get current Session ID
 export const getLocalSession = async () => {
-  return await AsyncStorage.getItem(SESSION_ID);
+  const session = await AsyncStorage.getItem(SESSION_ID);
+  console.log("[Session] getLocalSession:", session);
+  return session;
 };
