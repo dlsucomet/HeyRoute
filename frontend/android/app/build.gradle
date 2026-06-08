@@ -1,4 +1,11 @@
 apply plugin: "com.android.application"
+
+// Load secrets from local.properties (gitignored)
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withInputStream { localProperties.load(it) }
+}
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
@@ -23,6 +30,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: localProperties['GOOGLE_MAPS_API_KEY'] ?: ""
+        ]
     }
 
     signingConfigs {
