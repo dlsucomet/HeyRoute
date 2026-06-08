@@ -29,6 +29,9 @@ const ActiveVoiceModal = ({
   onRecordingStateChange,
   onProcessingStateChange,
 }: ActiveVoiceModalProps) => {
+  useEffect(() => {
+    console.log("[Modal] Received identity props:", { userId, sessionId });
+  }, [userId, sessionId]);
 
   // Logic is encapsulated in useVoiceAssistant to keep the UI component clean
   const {

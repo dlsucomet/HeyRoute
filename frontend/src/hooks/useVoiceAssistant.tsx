@@ -26,6 +26,10 @@ const RECORD_PATH = `${RNFS.CachesDirectoryPath}/user_voice.wav`;
 export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview } = props;
 
+  useEffect(() => {
+    console.log("[ASR] Hook received identity props:", { userId, sessionId });
+  }, [userId, sessionId]);
+
   // --- State ---
   const [result, setResult] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -74,6 +78,16 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    */ 
   const stopAndProcessRecording = async () => {
     try {
+      console.log("[ASR] stopAndProcessRecording start:", { userId, sessionId });
+      if (!userId || !sessionId) {
+        console.error("Missing userId/sessionId");
+        try { await Sound.stopRecorder(); } catch {}
+        setResult("Missing user or session ID. Please reopen the screen and try again.");
+        setIsRecording(false);
+        setIsProcessing(false);
+        return;
+      }
+
       const finalPath = await Sound.stopRecorder();
       setIsRecording(false);
       setIsProcessing(true);
@@ -295,6 +309,12 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Initiates a new conversation.
    */
   const startConversation = async () => {
+    if (!userId || !sessionId) {
+      console.error("Missing userId/sessionId");
+      setResult("Missing user or session ID. Please reopen the screen and try again.");
+      return;
+    }
+
     if (!(await requestMicrophonePermission()) || !isConnected) {
       setResult(!isConnected ? "No connection" : "Mic denied");
       return;

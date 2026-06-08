@@ -39,6 +39,7 @@ export const useWakeWord = ({
   const managerRef = useRef<PorcupineManager | null>(null);
   const isListeningRef = useRef(false);
   const isStoppingRef = useRef(false);
+  const wakeWordDisabledRef = useRef(false);
 
   // Store latest callback values in refs to avoid stale closures
   // without adding them as effect dependencies
@@ -74,10 +75,25 @@ export const useWakeWord = ({
      * Initializes the PorcupineManager with the specified keyword and starts listening.
      */
     const initPorcupine = async () => {
+      if (wakeWordDisabledRef.current) {
+        console.warn("[WakeWord] Wake word is disabled for this session due to initialization failure.");
+        onStatusChangeRef.current?.(false);
+        return;
+      }
+
       console.log("[WakeWord] initPorcupine called. visible:", visible, "managerRef:", !!managerRef.current, "isStopping:", isStoppingRef.current);
       isStoppingRef.current = false;
 
       try {
+        const apiKey = (PICOVOICE_API_KEY || "").trim();
+        if (!apiKey || apiKey === "...") {
+          wakeWordDisabledRef.current = true;
+          const errorMsg = "Wake word disabled: missing or invalid Picovoice access key. Manual mic is still available.";
+          console.warn("[WakeWord]", errorMsg);
+          onStatusChangeRef.current?.(false);
+          return;
+        }
+
         if (managerRef.current) {
           console.log("[WakeWord] Already initialized, skipping.");
           return;
@@ -124,8 +140,13 @@ export const useWakeWord = ({
         console.log("[WakeWord] Wake word listener started.");
       } catch (err: any) {
         console.error("[WakeWord] Wake word init failed:", err);
-        if (err.message?.includes("Activation")) {
-          onErrorRef.current("Wake word activation failed. Check your API key.");
+        const rawMessage = String(err?.message || "");
+        const invalidKey = rawMessage.includes("Activation") || rawMessage.includes("Failed to parse AccessKey");
+
+        if (invalidKey) {
+          wakeWordDisabledRef.current = true;
+          onErrorRef.current("Wake word disabled: invalid Picovoice API key. Manual mic is still available.");
+          console.warn("[WakeWord] Auto-disabled wake word after invalid key error.");
         } else {
           onErrorRef.current(err.message || "Failed to start wake word engine.");
         }
@@ -173,6 +194,7 @@ export const useWakeWord = ({
   // This effect does NOT reinitialize Porcupine, just pauses/resumes it
   useEffect(() => {
     const toggleListening = async () => {
+      if (wakeWordDisabledRef.current) return;
       if (!managerRef.current) return;
 
       try {

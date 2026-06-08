@@ -21,7 +21,7 @@ import NavBar from "../components/navbar";
 import MapViewComponent from "../components/map-view-component";
 import { useWakeWord } from "../hooks/useWakeWord";
 import supabase from '../supabase-client';
-import { getLocalSession } from "../utils/session";
+import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
 
 import { PermissionsAndroid } from 'react-native';
 
@@ -34,7 +34,8 @@ const HomeScreen = () => {
 
   // --- State ---
   const [userId, setUserId] = useState(null);
-  const [sessionId, setSessionId] = useState();
+  const [deviceId, setDeviceId] = useState(null);
+  const [sessionId, setSessionId] = useState(null);
 
   const [heyrouteResponse, setHeyrouteResponse] = useState("");
   const [transcribedText, setTranscribedText] = useState("");
@@ -67,16 +68,40 @@ const HomeScreen = () => {
    */
   useEffect(() => {
     const fetchId = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log("[Home] Bootstrapping user/device/session IDs...");
+
+      const [resolvedDeviceId, resolvedSessionId, authResult] = await Promise.all([
+        initDeviceId(),
+        startNewSessionIfNeeded(),
+        supabase.auth.getUser(),
+      ]);
+
+      console.log("[Home] initDeviceId resolved:", resolvedDeviceId);
+      console.log("[Home] startNewSessionIfNeeded resolved:", resolvedSessionId);
+
+      if (resolvedDeviceId) {
+        setDeviceId(resolvedDeviceId);
+      }
+
+      if (resolvedSessionId) {
+        setSessionId(resolvedSessionId);
+      }
+
+      const { data: { user } } = authResult;
       if (user) {
+        console.log("[Home] supabase auth user resolved:", user.id);
         setUserId(user.id);
         identifyDevice(user.id);
+      } else {
+        console.warn("[Home] No authenticated user resolved from Supabase.");
       }
-      const sId = await getLocalSession();
-      setSessionId(sId);
     };
     fetchId();
   }, []);
+
+  useEffect(() => {
+    console.log("[Home] State updated:", { userId, deviceId, sessionId });
+  }, [userId, deviceId, sessionId]);
 
   /**
    * Android specifically needs RECORD_AUDIO permission for both Wake Word (Porcupine) and ASR (Voice Assistant).
