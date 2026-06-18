@@ -54,15 +54,18 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     implementation("com.facebook.react:react-android")
     implementation "com.google.android.gms:play-services-location:21.0.1"
-    implementation "com.mapbox.navigationcore:android:3.1.0"
-    implementation "com.mapbox.navigationcore:base:3.1.0"
-    implementation "com.mapbox.mapboxsdk:mapbox-sdk-services:7.10.0"
-    implementation "com.mapbox.navigationcore:ui-components:3.1.0"
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs_nio:2.0.3"
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

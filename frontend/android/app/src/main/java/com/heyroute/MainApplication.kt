@@ -1,7 +1,6 @@
 package com.heyroute
 
 import android.app.Application
-import com.heyroute.NavigationPackage
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -17,7 +16,6 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           // Packages that cannot be autolinked yet can be added manually here
-          add(NavigationPackage())
         },
     )
   }

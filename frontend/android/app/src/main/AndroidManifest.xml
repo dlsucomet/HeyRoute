@@ -44,11 +44,6 @@
 
         </activity>
 
-        <service
-            android:name="com.mapbox.navigation.core.trip.session.NavigationSessionService"
-            android:foregroundServiceType="location"
-            android:exported="false" />
-
     </application>
 
 </manifest>
