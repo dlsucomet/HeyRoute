@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict
 from dotenv import load_dotenv
 from llm_gpt import process_with_gpt
-from adapters.openrouteservice_adapter import OpenRouteServiceAdapter
+from adapters.google_routes_adapter import GoogleRoutesAdapter
 from helpers import build_gpt_prompt, normalize_road_name, format_heyroute_response, format_alternates_response, check_label_role, resolve_collisions, toll_roads
 from prompts import SYSTEM_PROMPT, CLARIFICATIONS_PROMPT, TRIP_CHANGES_PROMPT, INTENTS_PROMPT, NAVIGATION_INTENTS_PROMPT, PREFERENCE_INTENTS_PROMPT, SEMANTICS_PROMPT
 from db import log_event, log_system_error, log_final_json, log_preference, log_route_details, load_saved_places, store_trip, load_most_used_road, store_route_familiarity, load_most_avoided_road, store_route_avoidance, load_most_preferred_option, store_route_option_preference
@@ -28,7 +28,7 @@ from db import log_event, log_system_error, log_final_json, log_preference, log_
 load_dotenv()
 
 app = FastAPI()
-adapter = OpenRouteServiceAdapter()
+adapter = GoogleRoutesAdapter()
 SESSIONS = {}
 
 # ------------------- Request Model -------------------
