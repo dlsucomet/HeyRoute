@@ -8,9 +8,10 @@
  * - Session lifecycle tracking (Active/Background)
  */
 
-import React, {useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator, AppState } from 'react-native';
-import { NavigationContainer } from "@react-navigation/native";
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, ActivityIndicator, AppState, PermissionsAndroid, Platform } from 'react-native';
+import { NavigationContainer as ReactNavigationContainer } from '@react-navigation/native';
+import { NavigationProvider } from '@googlemaps/react-native-navigation-sdk';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { startNewSessionIfNeeded, endSession, updateActivity } from './src/utils/session';
 import { vexo } from 'vexo-analytics';
@@ -113,33 +114,40 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {/* render screens based on session state */}
-        {session && session.user ? (
-          // If user is logged in, show App Screens
-          <>
-            <Stack.Screen name="Home" component={HomeScreen} />
-            <Stack.Screen name="Saved" component={SavedScreen} />
-            <Stack.Screen name="History" component={HistoryScreen} />
-            <Stack.Screen name="Profile" component={ProfileScreen} />
-            <Stack.Screen name="ActiveVoiceModal" component={ActiveVoiceModal} options={{ presentation: 'modal' }} /> 
-            <Stack.Screen name="RoutePreview" component={RoutePreview} />
-            <Stack.Screen name="NavigationScreen" component={NavigationScreen} />
-            <Stack.Screen name="Terms" component={TermsScreen} />
-            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-            <Stack.Screen name="ReportBug" component={ReportBugScreen} />
-          </>
-        ) : (
-          // If there is no session, show the Login and Signup screens
-          <>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="Signup" component={SignupScreen} />
-            <Stack.Screen name="Terms" component={TermsScreen} />
-            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <NavigationProvider
+      termsAndConditionsDialogOptions={{
+        title: 'HeyRoute Navigation',
+        companyName: 'HeyRoute',
+      }}
+    >
+      <ReactNavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {/* render screens based on session state */}
+          {session && session.user ? (
+            // If user is logged in, show App Screens
+            <>
+              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Screen name="Saved" component={SavedScreen} />
+              <Stack.Screen name="History" component={HistoryScreen} />
+              <Stack.Screen name="Profile" component={ProfileScreen} />
+              <Stack.Screen name="ActiveVoiceModal" component={ActiveVoiceModal} options={{ presentation: 'modal' }} /> 
+              <Stack.Screen name="RoutePreview" component={RoutePreview} />
+              <Stack.Screen name="NavigationScreen" component={NavigationScreen} />
+              <Stack.Screen name="Terms" component={TermsScreen} />
+              <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+              <Stack.Screen name="ReportBug" component={ReportBugScreen} />
+            </>
+          ) : (
+            // If there is no session, show the Login and Signup screens
+            <>
+              <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="Signup" component={SignupScreen} />
+              <Stack.Screen name="Terms" component={TermsScreen} />
+              <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            </>
+          )}
+        </Stack.Navigator>
+      </ReactNavigationContainer>
+    </NavigationProvider>
   );
 }

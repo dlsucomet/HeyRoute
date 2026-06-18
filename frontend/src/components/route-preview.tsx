@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { RouteProp, useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-import MapViewComponent from "../components/map-view-component";
+import GoogleNavView from "../components/google-nav-view";
 import RouteSelectionPanel from "./route-selection-panel";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
@@ -192,15 +192,10 @@ const RoutePreviewScreen = () => {
     <SafeAreaView style={styles.safeArea} pointerEvents="box-none">
       <View style={styles.container}>
 
-        {/* Map */}
         <View style={StyleSheet.absoluteFill}>
-          <MapViewComponent
-            userId={userId}
-            start={start}
-            destination={destination}
-            followUser={false}
+          <GoogleNavView
             previewMode={true}
-            matchingCoords={activeFullGeometry}
+            destination={destination}
           />
         </View>
 

@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, Pressable, Platform, Text, Keyboard, ActivityIndicator, NativeModules, Switch } from "react-native";
+import { View, StyleSheet, Pressable, Platform, Text, Keyboard, ActivityIndicator, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native"
@@ -18,14 +18,13 @@ import { customEvent, identifyDevice } from 'vexo-analytics';
 import DirectionsCard from "../components/directions-card";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
-import MapViewComponent from "../components/map-view-component";
+import GoogleNavView from "../components/google-nav-view";
 import { useWakeWord } from "../hooks/useWakeWord";
 import supabase from '../supabase-client';
 import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
 
 import { PermissionsAndroid } from 'react-native';
 
-const { NavigationModule } = NativeModules;
 
 const HomeScreen = () => {
   const navigation = useNavigation();
@@ -240,7 +239,7 @@ const HomeScreen = () => {
     
     // Cleanup if switching from an active route to a new one
     if (heyrouteData.switch_route) {
-      NavigationModule.stopNavigation();
+      // Navigation cleanup handled by Google Nav SDK
       setStart("");
       setDestination("");
     }
@@ -253,7 +252,7 @@ const HomeScreen = () => {
 
     // If navigation is stopped, we reset. 
     if (heyrouteData.navigation_started === false) {
-      NativeModules.NavigationModule.stopNavigation();
+      // Navigation cleanup handled by Google Nav SDK
       setStart(""); 
       setDestination("");
       return;
@@ -348,12 +347,8 @@ const HomeScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       
-      {/* Map Background - Uses start/destination for geometry */}
-      <MapViewComponent
-        userId={userId}
-        start={start}
-        destination={destination}
-      />
+      {/* Map Background */}
+      <GoogleNavView previewMode={true} />
 
       <View style={styles.navContainer} pointerEvents="box-none">
         <NavBar userId={userId} />
