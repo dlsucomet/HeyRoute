@@ -12,11 +12,11 @@ import { useState, useEffect, useRef } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { Sound } from "react-native-nitro-sound";
 import RNFS from "react-native-fs";
-import { Buffer } from "buffer";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { customEvent } from 'vexo-analytics';
 import { ASR_URL } from "@env";
 import { ActiveVoiceModalProps } from "../types/navigation";
+import { speakTTS } from "../utils/tts";
 
 const ASR_ANDROID_URL = ASR_URL;
 
@@ -24,7 +24,7 @@ const ASR_ANDROID_URL = ASR_URL;
 const RECORD_PATH = `${RNFS.CachesDirectoryPath}/user_voice.wav`;
 
 export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
-  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview } = props;
+  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse } = props;
 
   useEffect(() => {
     console.log("[ASR] Hook received identity props:", { userId, sessionId });
@@ -227,11 +227,12 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
     setResult(enhanced || "Thinking...");
     if (onTranscriptionComplete) onTranscriptionComplete(enhanced, data?.metrics);
+    if (onResponse) onResponse(data);
 
     // Navigation Trigger
     if (heyrouteData?.navigation_started || heyrouteData?.navigation_started === false) {
       await endConversation();
-      onNavigationTriggered(heyrouteData);
+      onNavigationTriggered?.(heyrouteData);
       return;
     }
 
@@ -262,7 +263,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       heyrouteData.speech_delay = estimatedSpeechTime;
 
       // Trigger the navigation
-      onRoutePreview(heyrouteData);
+      onRoutePreview?.(heyrouteData);
       return;
     }
 
@@ -289,20 +290,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Fetches MP3 audio from TTS engine and plays it immediately.
    */
   const playTTS = async (text: string) => {
-    const res = await fetch(`${ASR_ANDROID_URL}/speak`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    if (!res.ok) throw new Error("TTS Server Error");
-
-    const arrayBuffer = await res.arrayBuffer();
-    const path = `${RNFS.CachesDirectoryPath}/tts.mp3`;
-
-    // Save buffer to file then play
-    await RNFS.writeFile(path, Buffer.from(arrayBuffer).toString("base64"), "base64");
-    await Sound.startPlayer(path);
+    await speakTTS(text);
   };
 
   /**

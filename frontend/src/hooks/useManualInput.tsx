@@ -170,7 +170,7 @@ export const useManualInput = (props: DirectionsCardProps) => {
         startQuery = encodeURIComponent(startAddr);
       }
       
-      const response = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startQuery}&destination=${encodeURIComponent(destAddr)}&alternatives=true&key=${GOOGLE_API_KEY}`);
+      const response = await fetch(`https://maps.googleapis.com/maps/api/directions/json?origin=${startQuery}&destination=${encodeURIComponent(destAddr)}&alternatives=true&departure_time=now&key=${GOOGLE_API_KEY}`);
       const data = await response.json();
       
       if (data.status === "OK" && data.routes?.length > 0) {
@@ -182,7 +182,7 @@ export const useManualInput = (props: DirectionsCardProps) => {
           route: {
             start: leg.start_address,
             end: leg.end_address,
-            duration: leg.duration?.text || "-- mins",
+            duration: leg.duration_in_traffic?.text || leg.duration?.text || "-- mins",
             distance: leg.distance?.text || "-- km",
             full_geometry: decodedPrimaryCoords,
             matching_coords: decodedPrimaryCoords, 
@@ -190,15 +190,16 @@ export const useManualInput = (props: DirectionsCardProps) => {
           },
           alternatives: data.routes.slice(1).map((r: any, i: number) => {
              const decodedAltCoords = decodePolyline(r.overview_polyline?.points || "");
+             const altLeg = r.legs[0];
              return {
-              start: r.legs[0].start_address,
-              end: r.legs[0].end_address,
-              duration: r.legs[0].duration?.text || "-- mins",
-              distance: r.legs[0].distance?.text || "-- km",
+              start: altLeg.start_address,
+              end: altLeg.end_address,
+              duration: altLeg.duration_in_traffic?.text || altLeg.duration?.text || "-- mins",
+              distance: altLeg.distance?.text || "-- km",
               full_geometry: decodedAltCoords,
               matching_coords: decodedAltCoords,
               via: r.summary ? r.summary : `Alt Route ${i + 1}`,
-            };
+             };
           })
         };
       }

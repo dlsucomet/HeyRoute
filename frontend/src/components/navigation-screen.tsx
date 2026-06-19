@@ -91,11 +91,11 @@ const NavigationScreen = () => {
         }}
         userId={userId}
         sessionId={sessionId}
-        autoStart={shouldAutoStartVadMode.current}
+        autoStartVadMode={shouldAutoStartVadMode}
         onRecordingStateChange={setIsRecordingInModal}
         onProcessingStateChange={setIsProcessingInModal}
         onVadModeChange={setVadModeActive}
-        onResponse={(res) => {
+        onResponse={(res: any) => {
           // If the AI wants to cancel navigation
           if (res?.intents?.cancellation) {
             navigation.navigate("Home");

@@ -28,6 +28,7 @@ const ActiveVoiceModal = ({
   autoStartVadMode,  
   onRecordingStateChange,
   onProcessingStateChange,
+  onResponse,
 }: ActiveVoiceModalProps) => {
   useEffect(() => {
     console.log("[Modal] Received identity props:", { userId, sessionId });
@@ -44,7 +45,7 @@ const ActiveVoiceModal = ({
     startConversation
   } = useVoiceAssistant({
     userId, sessionId, visible, onClose,
-    onTranscriptionComplete, onNavigationTriggered, onRoutePreview,
+    onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse,
   });
 
   // Bubble recording/processing state up to HomeScreen for wake word management

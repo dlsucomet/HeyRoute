@@ -196,17 +196,16 @@ async def format_heyroute_response(summary):
     orig = orig if orig != "current location" else "your current location"
     dest = summary.get("destination")
     via = summary.get("via")
-    dist = summary.get("distance")
-    dur = summary.get("duration")
     option = summary.get("option")
     route_phrase = f"{option} route" if option != "recommended" else "route"
     
-    # Standardize the 'via' text (removes 'via' prefix if already present)
-    via_clean = via.replace("via ", "")
+    via_phrase = ""
+    if via:
+        via_clean = via.replace("via ", "")
+        via_phrase = f" via {via_clean}"
 
     return (
-        f"To get to {dest} from {orig}, you'll be taking the {route_phrase} via {via_clean}. "
-        f"The trip is approximately {dist} long and should take around {dur}. "
+        f"I've found a {route_phrase} to {dest} from {orig}{via_phrase}. "
         f"Would you like to start navigation now? Say 'Let's go' to begin."
     )
 
@@ -234,7 +233,7 @@ async def format_alternates_response(summaries):
     for r in summaries:
         # Clean the 'via' text
         via_clean = r['via'].replace("via ", "")
-        desc = f"Route {r['index']} goes via {via_clean}, covering a distance of approximately {r['distance']} long and should take around {r['duration']}."
+        desc = f"Route {r['index']} goes via {via_clean}."
         route_descriptions.append(desc)
     body = "\n".join(route_descriptions)
     

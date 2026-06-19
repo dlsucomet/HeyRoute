@@ -13,13 +13,89 @@ import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from "
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RouteProp, useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import Geolocation from "react-native-geolocation-service";
+import { GOOGLE_MAPS_API_KEY } from "@env";
 
 import GoogleNavView from "../components/google-nav-view";
 import RouteSelectionPanel from "./route-selection-panel";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
+import { speakTTS } from "../utils/tts";
 
 const LOG_PREFIX = "[RoutePreviewScreen]";
+
+/**
+ * Decodes Google Maps Encoded Polyline Strings into an array of [lng, lat] coordinates.
+ */
+const decodePolyline = (encoded: string) => {
+  if (!encoded) return [];
+  const poly = [];
+  let index = 0, len = encoded.length;
+  let lat = 0, lng = 0;
+
+  while (index < len) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlat = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lat += dlat;
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    let dlng = ((result & 1) !== 0 ? ~(result >> 1) : (result >> 1));
+    lng += dlng;
+    poly.push([lng / 1e5, lat / 1e5]);
+  }
+  return poly;
+};
+
+/**
+ * Formats a Routes API duration string (e.g. "1425s") into a human-readable string (e.g. "24 mins").
+ */
+const formatDuration = (durationStr: string) => {
+  if (!durationStr) return "-- mins";
+  const seconds = parseInt(durationStr.replace("s", ""), 10);
+  if (isNaN(seconds)) return "-- mins";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes} mins`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMins = minutes % 60;
+  return remainingMins > 0 ? `${hours} hr ${remainingMins} mins` : `${hours} hr`;
+};
+
+/**
+ * Formats a distance in meters to a human-readable string (e.g. "1.5 km").
+ */
+const formatDistance = (meters: number) => {
+  if (meters === undefined || meters === null) return "-- km";
+  const km = meters / 1000;
+  return `${km.toFixed(1)} km`;
+};
+
+/**
+ * Parses a coordinate string in the format "lat,lng" if possible.
+ */
+const parseLatLng = (str: string) => {
+  const parts = str.split(",");
+  if (parts.length === 2) {
+    const lat = parseFloat(parts[0].trim());
+    const lng = parseFloat(parts[1].trim());
+    if (!isNaN(lat) && !isNaN(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+  return null;
+};
 
 type RoutePreviewParams = {
   RoutePreview: {
@@ -46,9 +122,211 @@ const RoutePreviewScreen = () => {
   const { start, destination, preference, userId, sessionId, routeData, fromHistory,   routeOption, avoidList, majorRoad } = (route.params || {});
 
   // --- STATE ---
-  const primaryRoute = routeData?.route || (routeData?.routes && routeData.routes[0]) || null;
-  const [activeFullGeometry, setActiveFullGeometry] = useState<any>(primaryRoute?.full_geometry || null);
+  const getInitialRawRoutes = () => {
+    const raw = [];
+    if (routeData?.route) {
+      raw.push(routeData.route);
+      if (routeData?.alternatives) raw.push(...routeData.alternatives);
+    } else if (routeData?.routes) {
+      raw.push(...routeData.routes);
+    }
+    return raw;
+  };
+
+  const initialRawRoutes = getInitialRawRoutes();
+  const [localRoutes, setLocalRoutes] = useState<any[]>(initialRawRoutes);
+  const [activeFullGeometry, setActiveFullGeometry] = useState<any>(
+    initialRawRoutes[0]?.full_geometry || null
+  );
   const [activeRouteId, setActiveRouteId] = useState("1");
+  const [navSdkEta, setNavSdkEta] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasAnnouncedEtaRef = useRef(false);
+
+  const handleEtaUpdated = (eta: string, distanceKm?: number) => {
+    setNavSdkEta(eta);
+    if (!hasAnnouncedEtaRef.current && distanceKm !== undefined) {
+      hasAnnouncedEtaRef.current = true;
+      const speechText = `The route is approximately ${distanceKm} kilometers and will take around ${eta}.`;
+      console.log(`${LOG_PREFIX} Announcing route ETA:`, speechText);
+      speakTTS(speechText).catch((err) => {
+        console.error(`${LOG_PREFIX} TTS announcement error:`, err);
+      });
+    }
+  };
+
+  // --- GOOGLE ROUTES API FALLBACK ---
+  const getCurrentPosition = (): Promise<{ latitude: number; longitude: number } | null> => {
+    let timeoutId: any;
+
+    const geoPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+      Geolocation.getCurrentPosition(
+        (position) => {
+          if (timeoutId) clearTimeout(timeoutId);
+          resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        },
+        (error) => {
+          console.warn("[RoutePreviewScreen] High accuracy location failed, trying low accuracy:", error.code, error.message);
+          Geolocation.getCurrentPosition(
+            (pos) => {
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+            },
+            (err2) => {
+              if (timeoutId) clearTimeout(timeoutId);
+              console.error("[RoutePreviewScreen] Low accuracy location failed:", err2.code, err2.message);
+              resolve(null);
+            },
+            { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+          );
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
+      );
+    });
+
+    const timeoutPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+      timeoutId = setTimeout(() => {
+        console.warn("[RoutePreviewScreen] Geolocation.getCurrentPosition JS-level timeout reached (15 seconds). Resolving null.");
+        resolve(null);
+      }, 15000);
+    });
+
+    return Promise.race([geoPromise, timeoutPromise]);
+  };
+
+  const buildWaypoint = async (addressStr: string, isOrigin: boolean) => {
+    const isCurrentLoc =
+      addressStr === "Current Location" ||
+      addressStr === "Your location" ||
+      addressStr === "Your Location" ||
+      addressStr === "CURRENT_LOCATION";
+
+    if (isCurrentLoc && isOrigin) {
+      const position = await getCurrentPosition();
+      if (position) {
+        return {
+          location: {
+            latLng: {
+              latitude: position.latitude,
+              longitude: position.longitude,
+            },
+          },
+        };
+      }
+      return { address: "Manila, Philippines" };
+    }
+
+    const parsedCoords = parseLatLng(addressStr);
+    if (parsedCoords) {
+      return {
+        location: {
+          latLng: {
+            latitude: parsedCoords.latitude,
+            longitude: parsedCoords.longitude,
+          },
+        },
+      };
+    }
+
+    return { address: addressStr };
+  };
+
+  const fetchRoutesFromGoogle = async (startAddr: string, destAddr: string) => {
+    try {
+      console.log(`${LOG_PREFIX} Requesting Routes API fallback from: "${startAddr}" to: "${destAddr}"`);
+      
+      const originWaypoint = await buildWaypoint(startAddr, true);
+      const destinationWaypoint = await buildWaypoint(destAddr, false);
+
+      const requestBody = {
+        origin: originWaypoint,
+        destination: destinationWaypoint,
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+        computeAlternativeRoutes: true,
+      };
+
+      const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+          "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.description",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Routes API HTTP error! status: ${response.status}, details: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log(`${LOG_PREFIX} Routes API response received successfully.`);
+      
+      if (!data.routes || data.routes.length === 0) {
+        console.warn(`${LOG_PREFIX} No routes found in Routes API response.`);
+        return [];
+      }
+
+      return data.routes.map((route: any) => {
+        const decodedCoords = decodePolyline(route.polyline?.encodedPolyline || "");
+        return {
+          duration: formatDuration(route.duration),
+          distance: formatDistance(route.distanceMeters),
+          full_geometry: decodedCoords,
+          matching_coords: decodedCoords,
+          via: route.description || "Main Route",
+        };
+      });
+    } catch (error) {
+      console.error(`${LOG_PREFIX} fetchRoutesFromGoogle error:`, error);
+      return [];
+    }
+  };
+
+  // Sync state and fetch fallback route geometry if missing
+  useEffect(() => {
+    const initAndFetch = async () => {
+      const raw = getInitialRawRoutes();
+      const isCurrentLocOrigin =
+        start === "Current Location" ||
+        start === "Your location" ||
+        start === "Your Location" ||
+        start === "CURRENT_LOCATION";
+      
+      // Ignore backend geometry if origin is current location, so we fetch exact GPS
+      const hasGeometry = raw.length > 0 && raw[0]?.full_geometry && !isCurrentLocOrigin;
+      
+      if (hasGeometry) {
+        setLocalRoutes(raw);
+        setActiveFullGeometry(raw[0].full_geometry);
+        setActiveRouteId("1");
+      } else if (start && destination) {
+        console.log(`${LOG_PREFIX} Route geometry missing or needs precise GPS. Fetching fallback routes from Google Routes API...`);
+        setIsLoading(true);
+        try {
+          const googleRoutes = await fetchRoutesFromGoogle(start, destination);
+          setLocalRoutes(googleRoutes);
+          if (googleRoutes.length > 0) {
+            setActiveFullGeometry(googleRoutes[0].full_geometry);
+            setActiveRouteId("1");
+          } else {
+            setActiveFullGeometry(null);
+          }
+        } catch (err) {
+          console.error(`${LOG_PREFIX} Error fetching fallback routes:`, err);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setLocalRoutes([]);
+        setActiveFullGeometry(null);
+      }
+    };
+
+    initAndFetch();
+  }, [routeData, start, destination]);
 
   // Voice & Modal State
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -126,7 +404,7 @@ const RoutePreviewScreen = () => {
     setIsModalVisible(false);
     
     // Fallback to primary route if voice does not specify a new one
-    const selectedRoute = heyrouteData.route || primaryRoute;
+    const selectedRoute = heyrouteData.route || (localRoutes[0] || null);
     const newPrefs = heyrouteData.preferences || heyrouteData.preference || {};
 
     const payload = {
@@ -160,13 +438,7 @@ const RoutePreviewScreen = () => {
   // Build formatted routes for the panel
   let formattedRoutes: any[] = [];
   try {
-    const rawRoutes = [];
-    if (routeData?.route) {
-      rawRoutes.push(routeData.route);
-      if (routeData?.alternatives) rawRoutes.push(...routeData.alternatives);
-    } else if (routeData?.routes) {
-      rawRoutes.push(...routeData.routes);
-    }
+    const rawRoutes = localRoutes;
 
     // Map raw routes to the format expected by the RouteSelectionPanel
     formattedRoutes = rawRoutes.map((r, index) => ({
@@ -174,7 +446,7 @@ const RoutePreviewScreen = () => {
       id: String(index + 1),
       name: r.via ? `${r.via}` : `Route ${index + 1}`,
       tag: index === 0 ? "Recommended" : "Alternative Route",
-      duration: r.duration || "-- mins",
+      duration: (index === 0 && navSdkEta) ? navSdkEta : (r.duration || "-- mins"),
       distance: r.distance || "-- km",
     }));
   } catch (error) {
@@ -196,6 +468,8 @@ const RoutePreviewScreen = () => {
           <GoogleNavView
             previewMode={true}
             destination={destination}
+            routePolyline={activeFullGeometry}
+            onEtaUpdated={handleEtaUpdated}
           />
         </View>
 
@@ -270,7 +544,7 @@ const RoutePreviewScreen = () => {
             (navigation as any).navigate("NavigationScreen", {
               start, destination, userId, sessionId,
               full_geometry: selectedRoute?.full_geometry,
-              alternative_routes: routeData?.alternatives || [],
+              alternative_routes: localRoutes.slice(1),
               routeDuration: selectedRoute?.duration,
               routeDistance: selectedRoute?.distance,
               routeVia: selectedRoute?.via,
@@ -285,6 +559,13 @@ const RoutePreviewScreen = () => {
             if (selectedRoute?.full_geometry) setActiveFullGeometry(selectedRoute.full_geometry);
           }}
         />
+
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3e0d73" />
+            <Text style={styles.loadingText}>Fetching route geometry...</Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -384,5 +665,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
+  },
+  loadingContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 15,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "600",
+    fontFamily: "Karla",
   },
 });
