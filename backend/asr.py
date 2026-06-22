@@ -240,7 +240,9 @@ async def process_audio(
     user_id: str = Header(None, alias="X-User-ID"),
     session_id: str = Header(None, alias="X-Session-ID"),
     device_model: str = Header(None, alias="X-Device-Model"),
-    connection_type: str = Header(None, alias="X-Connection-Type")
+    connection_type: str = Header(None, alias="X-Connection-Type"),
+    current_lat: str = Header(None, alias="X-Current-Lat"),
+    current_lng: str = Header(None, alias="X-Current-Lng")
 ):
     """
     Endpoint to receive audio file, process it through ASR engine, and return results.
@@ -252,6 +254,13 @@ async def process_audio(
     4. Send the cleaned text to HeyRoute's backend
     5. Return the original transcription, cleaned transcription, and HeyRoute's response
     """
+
+    if current_lat is not None and current_lng is not None:
+        try:
+            asr.current_location = {"lat": float(current_lat), "lng": float(current_lng)}
+            print(f"DEBUG: Updated current_location from headers: {asr.current_location}")
+        except ValueError:
+            print(f"WARNING: Invalid coordinates received in headers: lat={current_lat}, lng={current_lng}")
 
     asyncio.create_task(log_session_metadata(user_id, session_id, device_model, connection_type))
     asyncio.create_task(log_event(user_id=user_id, session_id=session_id, event_type="VOICE_ACTIVATED", response="", turn_number=0))

@@ -14,6 +14,7 @@ import { Sound } from "react-native-nitro-sound";
 import RNFS from "react-native-fs";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { customEvent } from 'vexo-analytics';
+import Geolocation from "react-native-geolocation-service";
 import { ASR_URL } from "@env";
 import { ActiveVoiceModalProps } from "../types/navigation";
 import { speakTTS } from "../utils/tts";
@@ -105,6 +106,60 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
         return;
       }
 
+      // Helper to fetch current location with 2s timeout
+      const getCurrentPositionWithTimeout = (): Promise<{ latitude: number; longitude: number } | null> => {
+        let timeoutId: any;
+        const geoPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+          Geolocation.getCurrentPosition(
+            (position) => {
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+            },
+            (error) => {
+              console.warn("[useVoiceAssistant] High accuracy location failed, trying low accuracy:", error.code, error.message);
+              Geolocation.getCurrentPosition(
+                (pos) => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+                },
+                (err2) => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  console.error("[useVoiceAssistant] Low accuracy location failed:", err2.code, err2.message);
+                  resolve(null);
+                },
+                { enableHighAccuracy: false, timeout: 2000, maximumAge: 10000 }
+              );
+            },
+            { enableHighAccuracy: true, timeout: 2000, maximumAge: 10000 }
+          );
+        });
+
+        const timeoutPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+          timeoutId = setTimeout(() => {
+            console.warn("[useVoiceAssistant] Geolocation JS-level timeout reached (2 seconds). Resolving null.");
+            resolve(null);
+          }, 2000);
+        });
+
+        return Promise.race([geoPromise, timeoutPromise]);
+      };
+
+      // Fetch location
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const pos = await getCurrentPositionWithTimeout();
+        if (pos) {
+          lat = pos.latitude;
+          lng = pos.longitude;
+          console.log(`[ASR] Captured device GPS: lat=${lat}, lng=${lng}`);
+        } else {
+          console.warn("[ASR] Could not capture device GPS (timeout or failed).");
+        }
+      } catch (err) {
+        console.error("[ASR] Failed to fetch current location", err);
+      }
+
       // Prepare Multipart form data for the ASR server
       const formData = new FormData();
       formData.append('file', {
@@ -127,6 +182,8 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
           'X-User-ID': userId ?? "",
           'X-Session-ID': sessionId ?? "",
           'X-Connection-Type': type ?? 'unknown',
+          ...(lat !== null ? { 'X-Current-Lat': lat.toString() } : {}),
+          ...(lng !== null ? { 'X-Current-Lng': lng.toString() } : {}),
         } as any,
       });
 
