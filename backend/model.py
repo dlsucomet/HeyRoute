@@ -772,9 +772,30 @@ async def detect_intent(latest_input, mode, conversation_history, semantic_conte
                 f"\n\nLatest user message: {latest_input}")}
         ]
     raw_intents, intent_detect_latency = await process_with_gpt(check_intents_prompt)
+    
+    # Guard: detect error strings from LLM failures
+    if raw_intents.startswith("HeyRoute:"):
+        print(f"[INTENT] LLM returned error string: {raw_intents}")
+        asyncio.create_task(log_system_error(
+            user_id=user_id, session_id=session_id,
+            function_name="detect_intent_llm_error",
+            error_msg=raw_intents, error_type="LLMError",
+            payload={"mode": mode}
+        ))
+        if mode == "PREFERENCE_CONFIRMATION":
+            return {"preference_remembering": False, "no_preference_remembering": False}, intent_detect_latency
+        elif mode == "NAVIGATION":
+            return {"request_alternates": False, "select_route": False, "cancellation": False, "start_new_trip": False}, intent_detect_latency
+        else:
+            return {k: False for k in ["clarifications","cancellation","generate_routes","trip_changes",
+                           "start_nav","request_alternates","select_route"]}, intent_detect_latency
+
     try:
-        return json.loads(extract_json(raw_intents)), intent_detect_latency
+        parsed = json.loads(extract_json(raw_intents))
+        print(f"[INTENT] Detected: {parsed}")
+        return parsed, intent_detect_latency
     except Exception as e:
+        print(f"[INTENT] JSON parse FAILED. Raw: {raw_intents[:500]}")
         # This logs when GPT returns text instead of the required JSON block
         asyncio.create_task(log_system_error(
             user_id=user_id,
@@ -784,8 +805,13 @@ async def detect_intent(latest_input, mode, conversation_history, semantic_conte
             error_type=type(e).__name__,
             payload={"raw_gpt_output": raw_intents, "mode": mode}
         ))
-        return {k: False for k in ["clarifications","cancellation","generate_routes","trip_changes",
-                       "start_nav","request_alternates","select_route"]}, intent_detect_latency
+        if mode == "PREFERENCE_CONFIRMATION":
+            return {"preference_remembering": False, "no_preference_remembering": False}, intent_detect_latency
+        elif mode == "NAVIGATION":
+            return {"request_alternates": False, "select_route": False, "cancellation": False, "start_new_trip": False}, intent_detect_latency
+        else:
+            return {k: False for k in ["clarifications","cancellation","generate_routes","trip_changes",
+                           "start_nav","request_alternates","select_route"]}, intent_detect_latency
 
 async def resolve_semantic_places(user_input: str, semantic_context: dict, user_id: str):
     """

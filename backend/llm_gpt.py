@@ -45,7 +45,9 @@ async def process_with_gpt(conversation_history, model_name=None):
             # Request payload — OpenAI-compatible format
             data = {
                 "model": effective_model,
-                "messages": conversation_history
+                "messages": conversation_history,
+                "temperature": 0.0,
+                "max_tokens": 1024
             }
 
             # No auth headers needed for self-hosted server
@@ -66,6 +68,7 @@ async def process_with_gpt(conversation_history, model_name=None):
             # Handle the API response and errors
             if response.status_code == 200:
                 reply = response.json()['choices'][0]['message']['content']
+                print(f"[LLM] Raw response: {reply[:300]}")
                 return reply.strip(), gpt_ms
             else:
                 print(f"!!! QWEN LLM ERROR !!! Status: {response.status_code} | Body: {response.text}")

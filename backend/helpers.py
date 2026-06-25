@@ -262,18 +262,24 @@ def extract_json(raw_text: str) -> str:
       - ``` { ... } ```
       - Raw JSON: { ... }
       - JSON with leading/trailing text
+      - Python-style booleans (True/False)
     
     Returns the extracted JSON string, or the original text if no JSON found.
     """
+    extracted = raw_text.strip()
+    
     # 1. Try to extract from markdown code fences
     fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', raw_text, re.DOTALL)
     if fence_match:
-        return fence_match.group(1).strip()
+        extracted = fence_match.group(1).strip()
+    else:
+        # 2. Try to find a JSON object directly
+        brace_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+        if brace_match:
+            extracted = brace_match.group(0).strip()
     
-    # 2. Try to find a JSON object directly
-    brace_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
-    if brace_match:
-        return brace_match.group(0).strip()
+    # 3. Fix Python-style booleans → JSON-style
+    extracted = re.sub(r'\bTrue\b', 'true', extracted)
+    extracted = re.sub(r'\bFalse\b', 'false', extracted)
     
-    # 3. Return as-is (will fail json.loads, but let the caller handle it)
-    return raw_text.strip()
+    return extracted
