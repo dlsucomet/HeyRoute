@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Read Qwen server config from environment
-QWEN_API_URL = os.getenv("QWEN_API_URL", "http://altdsidccf.dlsu.edu.ph:33030/v1/chat/completions")
+QWEN_API_URL = os.getenv("QWEN_API_URL", "http://127.0.0.1:33030/v1/chat/completions")
 QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
 
 async def process_with_gpt(conversation_history, model_name=None):

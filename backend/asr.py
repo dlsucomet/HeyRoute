@@ -62,7 +62,7 @@ class ASREngine:
         self.groq_enabled = True
         self.current_location = None
         self.client = httpx.AsyncClient(timeout=30)
-        self.qwen_api_url = os.getenv("QWEN_API_URL", "http://altdsidccf.dlsu.edu.ph:33030/v1/chat/completions")
+        self.qwen_api_url = os.getenv("QWEN_API_URL", "http://127.0.0.1:33030/v1/chat/completions")
         self.qwen_model_name = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
 
     # -----------------------
