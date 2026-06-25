@@ -251,3 +251,29 @@ async def format_alternates_response(summaries):
     response = f"{intro}\n{body}\n{outro}"
     
     return response
+
+def extract_json(raw_text: str) -> str:
+    """
+    Extracts a JSON string from an LLM response that may contain
+    markdown code fences or extra surrounding text.
+    
+    Handles:
+      - ```json { ... } ```
+      - ``` { ... } ```
+      - Raw JSON: { ... }
+      - JSON with leading/trailing text
+    
+    Returns the extracted JSON string, or the original text if no JSON found.
+    """
+    # 1. Try to extract from markdown code fences
+    fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', raw_text, re.DOTALL)
+    if fence_match:
+        return fence_match.group(1).strip()
+    
+    # 2. Try to find a JSON object directly
+    brace_match = re.search(r'\{.*\}', raw_text, re.DOTALL)
+    if brace_match:
+        return brace_match.group(0).strip()
+    
+    # 3. Return as-is (will fail json.loads, but let the caller handle it)
+    return raw_text.strip()

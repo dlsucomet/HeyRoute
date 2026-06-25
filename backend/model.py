@@ -20,7 +20,7 @@ from typing import Optional, Dict
 from dotenv import load_dotenv
 from llm_gpt import process_with_gpt
 from adapters.google_routes_adapter import GoogleRoutesAdapter
-from helpers import build_gpt_prompt, normalize_road_name, format_heyroute_response, format_alternates_response, check_label_role, resolve_collisions, toll_roads
+from helpers import build_gpt_prompt, normalize_road_name, format_heyroute_response, format_alternates_response, check_label_role, resolve_collisions, toll_roads, extract_json
 from prompts import SYSTEM_PROMPT, CLARIFICATIONS_PROMPT, TRIP_CHANGES_PROMPT, INTENTS_PROMPT, NAVIGATION_INTENTS_PROMPT, PREFERENCE_INTENTS_PROMPT, SEMANTICS_PROMPT
 from db import log_event, log_system_error, log_final_json, log_preference, log_route_details, load_saved_places, store_trip, load_most_used_road, store_route_familiarity, load_most_avoided_road, store_route_avoidance, load_most_preferred_option, store_route_option_preference
 
@@ -308,7 +308,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 final_response, final_json_latency = await process_with_gpt(final_json_prompt)
 
             try:
-                state.final_gpt_response = json.loads(final_response)
+                state.final_gpt_response = json.loads(extract_json(final_response))
                 asyncio.create_task(log_final_json(user_id=user_id, session_id=session_id,
                     payload={
                         "origin": state.final_gpt_response.get("origin"),
@@ -642,7 +642,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
             ]
             route_select_raw, gpt_latency = await process_with_gpt(select_route_prompt)
             try:
-                route_select_data = json.loads(route_select_raw)
+                route_select_data = json.loads(extract_json(route_select_raw))
                 selected_index = route_select_data.get("route_select")
             except:
                 selected_index = None
@@ -773,7 +773,7 @@ async def detect_intent(latest_input, mode, conversation_history, semantic_conte
         ]
     raw_intents, intent_detect_latency = await process_with_gpt(check_intents_prompt)
     try:
-        return json.loads(raw_intents), intent_detect_latency
+        return json.loads(extract_json(raw_intents)), intent_detect_latency
     except Exception as e:
         # This logs when GPT returns text instead of the required JSON block
         asyncio.create_task(log_system_error(
