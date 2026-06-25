@@ -73,7 +73,7 @@ set_env_var() {
     fi
 }
 
-set_env_var "QWEN_API_URL" "http://172.16.3.213:33030/v1/chat/completions"
+set_env_var "QWEN_API_URL" "http://172.16.3.213:80/v1/chat/completions"
 set_env_var "QWEN_MODEL_NAME" "Qwen/Qwen2.5-14B-Instruct"
 set_env_var "MODEL_URL" "http://localhost:8000/model"
 set_env_var "PORT" "8000"
