@@ -62,6 +62,8 @@ class ASREngine:
         self.groq_enabled = True
         self.current_location = None
         self.client = httpx.AsyncClient(timeout=30)
+        self.qwen_api_url = os.getenv("QWEN_API_URL", "http://altdsidccf.dlsu.edu.ph:33030/v1/chat/completions")
+        self.qwen_model_name = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
 
     # -----------------------
     # WHISPER TRANSCRIPTION
@@ -104,9 +106,9 @@ class ASREngine:
     # -----------------------
     # AI CLEANING
     # -----------------------
-    async def call_groq_ai(self, text, userId, sessionId):
+    async def call_qwen_ai(self, text, userId, sessionId):
         """
-        Use Groq's LLM to clean up transcription errors (spelling errors) and unclear words in the transcription.
+        Use self-hosted Qwen LLM to clean up transcription errors (spelling errors) and unclear words in the transcription.
         Returns the corrected text.
         """
 
@@ -115,7 +117,7 @@ class ASREngine:
         
         try:
             data = {
-                "model": "llama-3.1-8b-instant",
+                "model": self.qwen_model_name,
                 "messages": [
                     {"role": "system", "content": ASR_PROMPT},
                     {"role": "user", "content": text},
@@ -124,12 +126,11 @@ class ASREngine:
             }
 
             headers = {
-                'Authorization': f'Bearer {self.groq_api_key}',
                 'Content-Type': 'application/json',
             }
 
             response = await self.client.post(
-                'https://api.groq.com/openai/v1/chat/completions',
+                self.qwen_api_url,
                 headers=headers,
                 json=data
             )
@@ -144,7 +145,7 @@ class ASREngine:
             asyncio.create_task(log_system_error(
                 user_id=userId,
                 session_id=sessionId,
-                function_name="call_groq_ai",
+                function_name="call_qwen_ai",
                 error_msg=str(e),
                 error_type=type(e).__name__,
                 payload={"original_text": text}
@@ -293,7 +294,7 @@ async def process_audio(
         original_text = await asr.transcribe_with_groq(file_content, user_id, session_id)
         asr_done = time.perf_counter()
 
-        enhanced_text = await asr.call_groq_ai(original_text, user_id, session_id)
+        enhanced_text = await asr.call_qwen_ai(original_text, user_id, session_id)
         cleaning_done = time.perf_counter()
 
         result = await asr.send_to_heyroute(enhanced_text, user_id, session_id)

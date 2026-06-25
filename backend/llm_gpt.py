@@ -1,9 +1,9 @@
 """
-This module implements the GPT-based language model functionality for HeyRoute.
+This module implements the LLM functionality for HeyRoute.
 
 Handles:
-    - Interfacing with the OpenRouter API to process user inputs and generate responses.
-    - Providing a clean abstraction for sending conversation history and receiving GPT-generated replies.
+    - Interfacing with the self-hosted Qwen 2.5 server to process user inputs and generate responses.
+    - Providing a clean abstraction for sending conversation history and receiving LLM-generated replies.
 """
 
 import httpx
@@ -14,52 +14,48 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-async def process_with_gpt(conversation_history, model_name="openai/gpt-4o-mini"):
+# Read Qwen server config from environment
+QWEN_API_URL = os.getenv("QWEN_API_URL", "http://altdsidccf.dlsu.edu.ph:33030/v1/chat/completions")
+QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
+
+async def process_with_gpt(conversation_history, model_name=None):
     """
-    Sends a conversation history to the OpenRouter API and returns the generated response.
+    Sends a conversation history to the self-hosted Qwen LLM server and returns the generated response.
 
     Parameters:
-        conversation_history: A list of dictionaries representing the conversation that represents the full conversation text and formatted as:
+        conversation_history: A list of dictionaries representing the conversation formatted as:
           [
                 {"role": "system" | "user" | "assistant", "content": str},
                 ...
             ]
 
-        model_name (str, optional): Model name to use for generating the response (default is "openai/gpt-4o-mini"). 
+        model_name (str, optional): Model name override. Defaults to QWEN_MODEL_NAME from env.
 
     Returns:
-        tuple: (str, float) The generated response from the GPT model and the time taken in milliseconds.
+        tuple: (str, float) The generated response from the LLM and the time taken in milliseconds.
     """
 
-    # Retrieve the API key from .env
-    api_key = os.getenv("OPENROUTER_API_KEY")
+    # Use the configured Qwen model unless explicitly overridden
+    effective_model = model_name if model_name else QWEN_MODEL_NAME
 
-    # Validate API key existence
-    if not api_key:
-        print("ERROR: OPENROUTER_API_KEY not found in environment!")
-        return "HeyRoute: Sorry, I'm missing my API credentials.", 0.0
-    
     start_time = time.perf_counter()
 
-    try:  
-        async with httpx.AsyncClient() as client:
-            # HTTP headers required by OpenRouter API
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost",
-                "X-Title": "HeyRoute"
-            }
-
-            # Request payload containing model and conversation history
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # Request payload — OpenAI-compatible format
             data = {
-                "model": model_name,
+                "model": effective_model,
                 "messages": conversation_history
             }
 
-            # Send POST request to OpenRouter API
+            # No auth headers needed for self-hosted server
+            headers = {
+                "Content-Type": "application/json"
+            }
+
+            # Send POST request to self-hosted Qwen server
             response = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
+                QWEN_API_URL,
                 headers=headers,
                 json=data
             )
@@ -72,8 +68,13 @@ async def process_with_gpt(conversation_history, model_name="openai/gpt-4o-mini"
                 reply = response.json()['choices'][0]['message']['content']
                 return reply.strip(), gpt_ms
             else:
-                print(f"!!! OPENROUTER ERROR !!! Status: {response.status_code} | Body: {response.text}")
+                print(f"!!! QWEN LLM ERROR !!! Status: {response.status_code} | Body: {response.text}")
                 return "HeyRoute: Sorry, I couldn't process that request.", gpt_ms
+    except httpx.TimeoutException:
+        end_time = time.perf_counter()
+        gpt_ms = (end_time - start_time) * 1000
+        print(f"!!! QWEN LLM TIMEOUT !!! after {gpt_ms:.0f}ms")
+        return "HeyRoute: The language model took too long to respond. Please try again.", gpt_ms
     except Exception as e:
-        print(f"Unexpected Error: {e}")
+        print(f"Unexpected Error contacting Qwen LLM: {e}")
         return "HeyRoute: Something went wrong on my end.", 0.0
