@@ -106,7 +106,11 @@ class GoogleRoutesAdapter(APIAdapter):
         """
         if not place_name:
             return None
-        params = {"text": place_name, "apiKey": self.geoapify_api_key}
+        params = {
+            "text": place_name, 
+            "apiKey": self.geoapify_api_key,
+            "filter": "countrycode:ph"
+        }
         try:
             resp = await self.client.get(self.geocode_url, params=params)
             if resp.status_code == 200:
@@ -250,6 +254,12 @@ class GoogleRoutesAdapter(APIAdapter):
             )
 
         data = resp.json()
+        
+        if not data.get("routes"):
+            print(f"[GoogleRoutesAdapter] Warning: No routes returned for {origin} -> {destination}")
+            print(f"[GoogleRoutesAdapter] Payload: {payload}")
+            print(f"[GoogleRoutesAdapter] Response: {data}")
+
         routes_output = []
 
         for route in data.get("routes", []):

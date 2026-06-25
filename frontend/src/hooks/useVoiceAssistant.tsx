@@ -271,7 +271,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     const enhanced = data?.transcription_enhanced || data?.transcription_raw || "";
     const heyrouteData = data?.data;
     const responseText = data?.heyroute_response || "";
-    const isErrorResponse = data?.data?.error === true;
+    const isErrorResponse = !!data?.data?.error;
     
     // Update conversation history for LLM context
     if (enhanced) conversationHistory.current.push({ role: "user", content: enhanced });
@@ -327,7 +327,13 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     // TTS Logic
     if (responseText) {
       try {
-        await playTTS(responseText);
+        playTTS(responseText);
+        
+        // Calculate estimated speech time (~300ms per word + 1 second buffer)
+        const fallbackSpeechTime = (responseText.split(" ").length * 300) + 1000;
+        
+        // Wait for the TTS to finish before opening the mic, otherwise the OS mutes the player
+        await new Promise(resolve => setTimeout(resolve, fallbackSpeechTime));
       } catch (ttsErr) {
         await endConversation();
         return;
