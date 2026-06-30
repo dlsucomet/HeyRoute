@@ -25,11 +25,11 @@ if [ -d "HeyRoute" ]; then
     echo "  → HeyRoute directory already exists, pulling latest..."
     cd HeyRoute
     git fetch --all
-    git checkout task/migrate-LLM-to-qwen
-    git reset --hard origin/task/migrate-LLM-to-qwen
-    git pull origin task/migrate-LLM-to-qwen
+    git checkout task/migrate-ASR-to-qwen
+    git reset --hard origin/task/migrate-ASR-to-qwen
+    git pull origin task/migrate-ASR-to-qwen
 else
-    git clone -b task/migrate-LLM-to-qwen https://github.com/dlsucomet/HeyRoute.git
+    git clone -b task/migrate-ASR-to-qwen https://github.com/dlsucomet/HeyRoute.git
     cd HeyRoute
 fi
 
