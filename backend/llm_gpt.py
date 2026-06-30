@@ -16,7 +16,7 @@ load_dotenv()
 
 # Read Qwen server config from environment
 QWEN_API_URL = os.getenv("QWEN_API_URL", "http://172.16.3.213:80/v1/chat/completions")
-QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
+QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 
 async def process_with_gpt(conversation_history, model_name=None):
     """

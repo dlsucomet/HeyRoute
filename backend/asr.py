@@ -63,7 +63,7 @@ class ASREngine:
         self.current_location = None
         self.client = httpx.AsyncClient(timeout=30)
         self.qwen_api_url = os.getenv("QWEN_API_URL", "http://172.16.3.213:80/v1/chat/completions")
-        self.qwen_model_name = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-14B-Instruct")
+        self.qwen_model_name = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 
     # -----------------------
     # WHISPER TRANSCRIPTION
