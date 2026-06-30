@@ -13,7 +13,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
 import RNFS from 'react-native-fs';
 import { PorcupineManager } from '@picovoice/porcupine-react-native';
-import { PICOVOICE_API_KEY } from '@env';
+//import { PICOVOICE_API_KEY } from '@env';
 import { customEvent } from 'vexo-analytics';
 
 interface UseWakeWordProps {
