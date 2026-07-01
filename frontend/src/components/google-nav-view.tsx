@@ -32,6 +32,7 @@ const formatSecondsToDuration = (seconds: number): string => {
  */
 export interface GoogleNavViewProps {
   destination?: any;
+  waypoints?: any[];
   onArrival?: () => void;
   previewMode?: boolean;
   routePolyline?: any[];
@@ -40,6 +41,7 @@ export interface GoogleNavViewProps {
 
 const GoogleNavView = ({
   destination,
+  waypoints,
   onArrival,
   previewMode = false,
   routePolyline,
@@ -253,9 +255,15 @@ const GoogleNavView = ({
 
         if (lat !== null && lng !== null) {
           console.log('[GoogleNavView] Setting destination coords:', { lat, lng });
-          const routeStatus = await navigationController.setDestinations([
-            { position: { lat, lng } }
-          ]);
+          
+          let destinations = [];
+          if (waypoints && Array.isArray(waypoints) && waypoints.length > 0) {
+            console.log(`[GoogleNavView] Forcing route through ${waypoints.length} waypoints.`);
+            destinations = waypoints.map(wp => ({ position: { lat: wp.lat, lng: wp.lng } }));
+          }
+          destinations.push({ position: { lat, lng } });
+
+          const routeStatus = await navigationController.setDestinations(destinations);
           console.log('[GoogleNavView] Route status:', routeStatus);
 
           if (!active) return;
@@ -297,7 +305,7 @@ const GoogleNavView = ({
     return () => {
       active = false;
     };
-  }, [navReady, initiated, destination, navigationController, previewMode, onEtaUpdated]);
+  }, [navReady, initiated, destination, waypoints, navigationController, previewMode, onEtaUpdated]);
 
   // Draw route polyline in preview mode
   useEffect(() => {

@@ -20,6 +20,7 @@ from typing import Optional, Dict
 from dotenv import load_dotenv
 from llm_gpt import process_with_gpt
 from adapters.google_routes_adapter import GoogleRoutesAdapter
+from adapters.openrouteservice_adapter import OpenRouteServiceAdapter
 from helpers import build_gpt_prompt, normalize_road_name, format_heyroute_response, format_alternates_response, check_label_role, resolve_collisions, toll_roads, extract_json
 from prompts import SYSTEM_PROMPT, CLARIFICATIONS_PROMPT, TRIP_CHANGES_PROMPT, INTENTS_PROMPT, NAVIGATION_INTENTS_PROMPT, PREFERENCE_INTENTS_PROMPT, SEMANTICS_PROMPT
 from db import log_event, log_system_error, log_final_json, log_preference, log_route_details, load_saved_places, store_trip, load_most_used_road, store_route_familiarity, load_most_avoided_road, store_route_avoidance, load_most_preferred_option, store_route_option_preference
@@ -28,7 +29,8 @@ from db import log_event, log_system_error, log_final_json, log_preference, log_
 load_dotenv()
 
 app = FastAPI()
-adapter = GoogleRoutesAdapter()
+google_adapter = GoogleRoutesAdapter()
+ors_adapter = OpenRouteServiceAdapter()
 SESSIONS = {}
 
 # ------------------- Request Model -------------------
@@ -159,7 +161,8 @@ async def directions(request: Request, session_id: str = Header(None, alias="X-S
         state.current_location = {"lat": new_lat, "lng": new_lng}
 
     try:
-        routes, ors_latency = await adapter.get_directions(
+        active_adapter = ors_adapter if state.current_route_params.get("avoid_roads") else google_adapter
+        routes, ors_latency = await active_adapter.get_directions(
             origin=state.current_location,
             destination=state.current_route_params.get("destination"),
             option=state.current_route_params.get("option"),
@@ -336,7 +339,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                         origin_coords = state.current_location
                     else:
                         task_mapping["origin"] = len(tasks)
-                        tasks.append(adapter.geocode(origin))
+                        tasks.append(google_adapter.geocode(origin))
 
                 # Destination
                 if state.semantic_context["destination_known"]:
@@ -346,7 +349,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 else:
                     destination = state.final_gpt_response["destination"]
                     task_mapping["destination"] = len(tasks)
-                    tasks.append(adapter.geocode(destination))
+                    tasks.append(google_adapter.geocode(destination))
 
                 # Via points
                 via_coords = []
@@ -355,7 +358,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                     task_mapping["via_start"] = len(tasks)
                     for place in via_input:
                         if place.strip():
-                            tasks.append(adapter.geocode(place.strip()))
+                            tasks.append(google_adapter.geocode(place.strip()))
 
                 start_time = time.perf_counter()
                 results = await asyncio.gather(*tasks)
@@ -888,7 +891,8 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
 
     for attempt in attempts:
         try:
-            routes_data, ors_latency = await adapter.get_directions(
+            active_adapter = ors_adapter if attempt["avoid_roads"] else google_adapter
+            routes_data, ors_latency = await active_adapter.get_directions(
                 origin=origin,
                 destination=destination,
                 option=normalized_option,

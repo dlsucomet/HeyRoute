@@ -464,6 +464,13 @@ class OpenRouteServiceAdapter(APIAdapter):
 
                 # Use the smart sampler
                 matching_coords, mapbox_waypoints = await sample_smartly(full_coords, turn_indices, limit=100)
+                
+                # Sample max 15 strict waypoints for Google SDK detour forcing
+                waypoints = []
+                if len(matching_coords) > 0:
+                    step_size = max(1, len(matching_coords) // 15)
+                    sampled = matching_coords[::step_size][:15]
+                    waypoints = [{"lat": c[1], "lng": c[0]} for c in sampled]
 
             steps_instructions = [step["instruction"] for step in route["segments"][0]["steps"]]
             via_road = await extract_via_road(steps_instructions)
@@ -477,6 +484,7 @@ class OpenRouteServiceAdapter(APIAdapter):
                 "duration": f"{int(summary['duration']/60)} mins",
                 "full_geometry": full_coords,
                 "matching_coords": matching_coords,
+                "waypoints": waypoints,
                 "waypoint_indices": mapbox_waypoints,
                 "turn_indices": turn_indices,
                 "steps_instructions": steps_instructions

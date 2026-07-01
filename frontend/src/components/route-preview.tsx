@@ -138,6 +138,9 @@ const RoutePreviewScreen = () => {
   const [activeFullGeometry, setActiveFullGeometry] = useState<any>(
     initialRawRoutes[0]?.full_geometry || null
   );
+  const [activeWaypoints, setActiveWaypoints] = useState<any[]>(
+    initialRawRoutes[0]?.waypoints || []
+  );
   const [activeRouteId, setActiveRouteId] = useState("1");
   const [navSdkEta, setNavSdkEta] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -301,6 +304,7 @@ const RoutePreviewScreen = () => {
       if (hasGeometry) {
         setLocalRoutes(raw);
         setActiveFullGeometry(raw[0].full_geometry);
+        setActiveWaypoints(raw[0].waypoints || []);
         setActiveRouteId("1");
       } else if (start && destination) {
         console.log(`${LOG_PREFIX} Route geometry missing or needs precise GPS. Fetching fallback routes from Google Routes API...`);
@@ -310,9 +314,11 @@ const RoutePreviewScreen = () => {
           setLocalRoutes(googleRoutes);
           if (googleRoutes.length > 0) {
             setActiveFullGeometry(googleRoutes[0].full_geometry);
+            setActiveWaypoints(googleRoutes[0].waypoints || []);
             setActiveRouteId("1");
           } else {
             setActiveFullGeometry(null);
+            setActiveWaypoints([]);
           }
         } catch (err) {
           console.error(`${LOG_PREFIX} Error fetching fallback routes:`, err);
@@ -322,6 +328,7 @@ const RoutePreviewScreen = () => {
       } else {
         setLocalRoutes([]);
         setActiveFullGeometry(null);
+        setActiveWaypoints([]);
       }
     };
 
@@ -468,6 +475,7 @@ const RoutePreviewScreen = () => {
           <GoogleNavView
             previewMode={true}
             destination={destination}
+            waypoints={activeWaypoints}
             routePolyline={activeFullGeometry}
             onEtaUpdated={handleEtaUpdated}
           />
@@ -557,6 +565,7 @@ const RoutePreviewScreen = () => {
           onRouteSelect={(selectedRoute: any) => {
             setActiveRouteId(selectedRoute?.id);
             if (selectedRoute?.full_geometry) setActiveFullGeometry(selectedRoute.full_geometry);
+            setActiveWaypoints(selectedRoute?.waypoints || []);
           }}
         />
 
