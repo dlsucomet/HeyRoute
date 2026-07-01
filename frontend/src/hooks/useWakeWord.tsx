@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NativeModules, NativeEventEmitter } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { customEvent } from 'vexo-analytics';
 
 const { WakeWordModule } = NativeModules;

@@ -385,7 +385,12 @@ const HomeScreen = () => {
           {wakeWordActive && (
             <View style={styles.wakeWordIndicator}>
               <View style={styles.listeningDot} />
-              <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+              <Pressable onLongPress={() => {
+                const { NativeModules } = require('react-native');
+                NativeModules.WakeWordModule.simulateWakeWord();
+              }}>
+                <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+              </Pressable>
             </View>
           )}
           <Pressable
