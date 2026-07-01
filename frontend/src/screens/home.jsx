@@ -406,7 +406,7 @@ const HomeScreen = () => {
         onLongPress={() => {
           console.log("[Debug] Simulating Wake Word Trigger...");
           const { NativeModules } = require('react-native');
-          NativeModules.WakeWord.simulateWakeWord();
+          NativeModules.WakeWordModule.simulateWakeWord();
         }}
       >
         <Text style={{ color: 'white', fontSize: 10 }}>[Hold] Test Wake Word</Text>

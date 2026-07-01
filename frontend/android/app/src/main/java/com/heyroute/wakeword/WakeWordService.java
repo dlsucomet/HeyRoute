@@ -48,8 +48,6 @@ public class WakeWordService {
     private void loadModels() {
         try {
             melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"));
-            melspectrogramInterpreter.resizeInput(0, new int[]{1, CHUNK_SIZE}); // Dynamically size to 1280
-            melspectrogramInterpreter.allocateTensors();
             embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"));
             heyRouteInterpreter = new Interpreter(loadModelFile("hey_route.tflite"));
             Log.d(TAG, "OpenWakeWord Models loaded successfully");
