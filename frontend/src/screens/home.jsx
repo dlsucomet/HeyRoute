@@ -400,6 +400,17 @@ const HomeScreen = () => {
         </View>
       )}
 
+      {/* Hidden Debug Button for Emulator Testing */}
+      <Pressable 
+        style={{ position: 'absolute', top: 120, right: 30, padding: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8, zIndex: 100 }}
+        onLongPress={() => {
+          console.log("[Debug] Simulating Wake Word Trigger...");
+          const { NativeModules } = require('react-native');
+          NativeModules.WakeWordModule.simulateWakeWord();
+        }}
+      >
+        <Text style={{ color: 'white', fontSize: 10 }}>[Hold] Test Wake Word</Text>
+      </Pressable>
 
       <ActiveVoiceModal
         userId={userId}
