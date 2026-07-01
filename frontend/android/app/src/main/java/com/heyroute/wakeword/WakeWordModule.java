@@ -4,6 +4,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+
 public class WakeWordModule extends ReactContextBaseJavaModule {
     private WakeWordService wakeWordService;
 
@@ -19,13 +21,12 @@ public class WakeWordModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void startListening() {
-        Intent serviceIntent = new Intent(reactContext, WakeWordService.class);
-        reactContext.startService(serviceIntent);
+        wakeWordService.startListening();
     }
 
     @ReactMethod
     public void simulateWakeWord() {
-        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+        getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit("onWakeWordDetected", 0.999f);
     }
 
