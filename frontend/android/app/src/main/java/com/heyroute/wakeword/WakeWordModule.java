@@ -19,7 +19,14 @@ public class WakeWordModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void startListening() {
-        wakeWordService.startListening();
+        Intent serviceIntent = new Intent(reactContext, WakeWordService.class);
+        reactContext.startService(serviceIntent);
+    }
+
+    @ReactMethod
+    public void simulateWakeWord() {
+        reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit("onWakeWordDetected", 0.999f);
     }
 
     @ReactMethod
