@@ -150,38 +150,31 @@ public class WakeWordService {
                     for (int j = 0; j < 32; j++) {
                         embeddingInputBuffer[0][75][j][0] = melOutput[0][0][0][j];
                     }
-                    melFrameIndex++;
+                    // 2. Embedding Model (runs continuously on the sliding window)
+                    float[][][][] embeddingOutput = new float[1][1][1][96];
+                    embeddingInterpreter.run(embeddingInputBuffer, embeddingOutput);
 
-                    // 2. Embedding Model (runs only after filling 76 frames, then continuously)
-                    if (melFrameIndex >= 76) {
-                        float[][][][] embeddingOutput = new float[1][1][1][96];
-                        embeddingInterpreter.run(embeddingInputBuffer, embeddingOutput);
+                    // Shift window and append new embedding frame
+                    for (int i = 0; i < 15; i++) {
+                        System.arraycopy(heyRouteInputBuffer[0][i+1], 0, heyRouteInputBuffer[0][i], 0, 96);
+                    }
+                    for (int j = 0; j < 96; j++) {
+                        heyRouteInputBuffer[0][15][j] = embeddingOutput[0][0][0][j];
+                    }
 
-                        // Shift window and append new embedding frame
-                        for (int i = 0; i < 15; i++) {
-                            System.arraycopy(heyRouteInputBuffer[0][i+1], 0, heyRouteInputBuffer[0][i], 0, 96);
-                        }
-                        for (int j = 0; j < 96; j++) {
-                            heyRouteInputBuffer[0][15][j] = embeddingOutput[0][0][0][j];
-                        }
-                        embeddingFrameIndex++;
-
-                        // 3. Hey Route Model (runs only after filling 16 embeddings)
-                        if (embeddingFrameIndex >= 16) {
-                            float[][] scoreOutput = new float[1][1];
-                            heyRouteInterpreter.run(heyRouteInputBuffer, scoreOutput);
-                            
-                            float score = scoreOutput[0][0];
-                            
-                            if (score > 0.5f) { // Wake Word Threshold
-                                Log.i(TAG, "Wake word detected! Confidence Score: " + score);
-                                emitDetectionEvent();
-                                
-                                // Reset to avoid immediate double-trigger
-                                embeddingFrameIndex = 0;
-                                melFrameIndex = 0;
-                            }
-                        }
+                    // 3. Hey Route Model (runs continuously on the 16-frame embedding window)
+                    float[][] scoreOutput = new float[1][1];
+                    heyRouteInterpreter.run(heyRouteInputBuffer, scoreOutput);
+                    
+                    float score = scoreOutput[0][0];
+                    
+                    if (score > 0.4f) { // Wake Word Threshold (lowered slightly for better recall)
+                        Log.i(TAG, "Wake word detected! Confidence Score: " + score);
+                        emitDetectionEvent();
+                        
+                        // Clear buffers to avoid immediate double-trigger while allowing instant re-listening
+                        embeddingInputBuffer = new float[1][76][32][1];
+                        heyRouteInputBuffer = new float[1][16][96];
                     }
                 }
             }
