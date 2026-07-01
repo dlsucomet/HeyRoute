@@ -57,7 +57,7 @@ class ASREngine:
     def __init__(self):
         # We now point to the external GPU server for Qwen3-ASR
         self.gpu_server_url = os.getenv("REMOTE_ASR_URL", "http://altdsidccf.dlsu.edu.ph:33070")
-        self.gpu_api_key = os.getenv("REMOTE_ASR_API_KEY", "heyroute-asr-secret-2024")
+        self.gpu_api_key = os.getenv("REMOTE_ASR_API_KEY", "")
         self.current_location = None
         self.client = httpx.AsyncClient(timeout=30)
 
