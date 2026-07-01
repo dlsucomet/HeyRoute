@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NativeModules, NativeEventEmitter, Platform, ToastAndroid } from 'react-native';
+import { NativeModules, NativeEventEmitter } from 'react-native';
 import { customEvent } from 'vexo-analytics';
 
 const { WakeWordModule } = NativeModules;
@@ -45,7 +45,7 @@ export const useWakeWord = ({
       console.log(`======================================================\n`);
       
       if (Platform.OS === 'android') {
-
+        const { ToastAndroid } = require('react-native');
         ToastAndroid.show(`Wake Word Detected! (Score: ${score})`, ToastAndroid.SHORT);
       }
 
