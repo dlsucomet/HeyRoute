@@ -103,7 +103,7 @@ const HomeScreen = () => {
   }, [userId, deviceId, sessionId]);
 
   /**
-   * Android specifically needs RECORD_AUDIO permission for both Wake Word (Porcupine) and ASR (Voice Assistant).
+   * Android specifically needs RECORD_AUDIO permission for both Wake Word (OpenWakeWord) and ASR (Voice Assistant).
    */
   useEffect(() => {
     const checkMicPermission = async () => {

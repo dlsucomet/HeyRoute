@@ -83,7 +83,7 @@ const ActiveVoiceModal = ({
    */
   const handleClose = async () => {
     console.log("[Modal] handleClose called — releasing mic before closing.");
-    await whenClosing(); // await so mic is fully released before Porcupine can reinit
+    await whenClosing(); // await so mic is fully released before OpenWakeWord can reinit
     onClose();
   };
 
