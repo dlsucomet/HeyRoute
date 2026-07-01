@@ -20,6 +20,12 @@ public class WakeWordService {
     private static final String TAG = "WakeWordService";
     private static final int SAMPLE_RATE = 16000;
     private static final int CHUNK_SIZE = 1280; // 80ms at 16kHz
+    private static final int MEL_FRAMES_PER_CHUNK = 5; // Melspectrogram outputs 5 frames per 1280 samples
+    private static final int MEL_FEATURES = 32;
+    private static final int EMB_WINDOW = 76; // Embedding model expects 76 mel frames
+    private static final int EMB_FEATURES = 96;
+    private static final int HR_WINDOW = 16; // Hey Route model expects 16 embedding frames
+    private static final float DETECTION_THRESHOLD = 0.5f;
     
     private ReactApplicationContext reactContext;
     private AudioRecord audioRecord;
@@ -30,15 +36,25 @@ public class WakeWordService {
     private Interpreter embeddingInterpreter;
     private Interpreter heyRouteInterpreter;
 
-    // Buffers for models
-    // Melspectrogram outputs [1, 1, 1, 32]
-    // Embedding model expects [1, 76, 32, 1]
-    private float[][][][] embeddingInputBuffer = new float[1][76][32][1];
-    private int melFrameIndex = 0;
+    /**
+     * Flat mel-spectrogram accumulation buffer.
+     * 
+     * The reference OpenWakeWord implementation accumulates mel frames into a flat
+     * growing buffer and feeds the LAST 76 frames to the embedding model.
+     * Our previous implementation used a fixed sliding window which produced 
+     * incorrect temporal context for the embedding model.
+     */
+    private float[][] melspectrogramBuffer;
+    private int melBufferSize = 0;
+    private static final int MEL_BUFFER_MAX = 200; // Max frames to keep (prevents unbounded growth)
 
-    // HeyRoute model expects [1, 16, 96]
-    private float[][][] heyRouteInputBuffer = new float[1][16][96];
-    private int embeddingFrameIndex = 0;
+    /**
+     * Flat embedding feature accumulation buffer.
+     * Same pattern: accumulate embeddings, feed the LAST 16 to the wake word model.
+     */
+    private float[][] featureBuffer;
+    private int featureBufferSize = 0;
+    private static final int FEATURE_BUFFER_MAX = 120;
 
     public WakeWordService(ReactApplicationContext reactContext) {
         this.reactContext = reactContext;
@@ -125,72 +141,116 @@ public class WakeWordService {
         float[][] floatBuffer = new float[1][CHUNK_SIZE];
         int loopCounter = 0;
 
+        // Initialize flat accumulation buffers
+        melspectrogramBuffer = new float[MEL_BUFFER_MAX][MEL_FEATURES];
+        melBufferSize = 0;
+        featureBuffer = new float[FEATURE_BUFFER_MAX][EMB_FEATURES];
+        featureBufferSize = 0;
+
         while (isRecording.get()) {
             int read = audioRecord.read(audioBuffer, 0, CHUNK_SIZE);
             if (read == CHUNK_SIZE) {
-                // Convert PCM 16-bit to float for OpenWakeWord
+                // Convert PCM 16-bit to float32 for the melspectrogram model.
+                // The reference OpenWakeWord implementation casts int16 to float32 directly
+                // (no normalization to [-1, 1] range needed).
                 for (int i = 0; i < CHUNK_SIZE; i++) {
                     floatBuffer[0][i] = (float) audioBuffer[i];
                 }
 
                 if (melspectrogramInterpreter != null) {
-                    // 1. Melspectrogram Model
-                    float[][][][] melOutput = new float[1][1][5][32]; // Model outputs 5 frames for 1280 samples
+                    // ============================================================
+                    // Stage 1: Melspectrogram
+                    // ============================================================
+                    float[][][][] melOutput = new float[1][1][MEL_FRAMES_PER_CHUNK][MEL_FEATURES];
                     melspectrogramInterpreter.run(floatBuffer, melOutput);
 
-                    // Add all 5 frames to the embedding sliding window buffer
-                    for (int f = 0; f < 5; f++) {
-                        // Rotate pointers to shift the window left by 1
-                        float[][] oldFrame = embeddingInputBuffer[0][0];
-                        for (int i = 0; i < 75; i++) {
-                            embeddingInputBuffer[0][i] = embeddingInputBuffer[0][i + 1];
+                    // Apply the OpenWakeWord melspec transform: x/10 + 2
+                    // This transform aligns the TFLite melspectrogram output with Google's
+                    // speech_embedding model expectations. Without this, the embedding model
+                    // receives values in the wrong numerical range and produces garbage.
+                    for (int f = 0; f < MEL_FRAMES_PER_CHUNK; f++) {
+                        // Compact the buffer if it's full
+                        if (melBufferSize >= MEL_BUFFER_MAX) {
+                            int keep = EMB_WINDOW; // Keep at least 76 frames
+                            System.arraycopy(melspectrogramBuffer, melBufferSize - keep,
+                                    melspectrogramBuffer, 0, keep);
+                            melBufferSize = keep;
                         }
-                        embeddingInputBuffer[0][75] = oldFrame;
-                        
-                        // Insert the new frame at the end
-                        for (int j = 0; j < 32; j++) {
-                            embeddingInputBuffer[0][75][j][0] = melOutput[0][0][f][j];
+                        for (int j = 0; j < MEL_FEATURES; j++) {
+                            melspectrogramBuffer[melBufferSize][j] = melOutput[0][0][f][j] / 10.0f + 2.0f;
+                        }
+                        melBufferSize++;
+                    }
+
+                    // ============================================================
+                    // Stage 2: Audio Embedding
+                    // Only run once we have accumulated enough mel frames (76+)
+                    // ============================================================
+                    if (melBufferSize >= EMB_WINDOW) {
+                        // Build embedding input from the LAST 76 mel frames (flat buffer approach)
+                        float[][][][] embInput = new float[1][EMB_WINDOW][MEL_FEATURES][1];
+                        int startIdx = melBufferSize - EMB_WINDOW;
+                        for (int i = 0; i < EMB_WINDOW; i++) {
+                            for (int j = 0; j < MEL_FEATURES; j++) {
+                                embInput[0][i][j][0] = melspectrogramBuffer[startIdx + i][j];
+                            }
+                        }
+
+                        float[][][][] embOutput = new float[1][1][1][EMB_FEATURES];
+                        embeddingInterpreter.run(embInput, embOutput);
+
+                        // Accumulate embedding into feature buffer
+                        if (featureBufferSize >= FEATURE_BUFFER_MAX) {
+                            int keep = HR_WINDOW;
+                            System.arraycopy(featureBuffer, featureBufferSize - keep,
+                                    featureBuffer, 0, keep);
+                            featureBufferSize = keep;
+                        }
+                        for (int j = 0; j < EMB_FEATURES; j++) {
+                            featureBuffer[featureBufferSize][j] = embOutput[0][0][0][j];
+                        }
+                        featureBufferSize++;
+
+                        // ============================================================
+                        // Stage 3: Wake Word Detection
+                        // Only run once we have accumulated enough embeddings (16+)
+                        // ============================================================
+                        if (featureBufferSize >= HR_WINDOW) {
+                            // Build input from the LAST 16 embedding frames
+                            float[][][] hrInput = new float[1][HR_WINDOW][EMB_FEATURES];
+                            int hrStartIdx = featureBufferSize - HR_WINDOW;
+                            for (int i = 0; i < HR_WINDOW; i++) {
+                                System.arraycopy(featureBuffer[hrStartIdx + i], 0, hrInput[0][i], 0, EMB_FEATURES);
+                            }
+
+                            float[][] scoreOutput = new float[1][1];
+                            heyRouteInterpreter.run(hrInput, scoreOutput);
+
+                            float score = scoreOutput[0][0];
+
+                            // Debug logging every ~2 seconds (25 chunks * 80ms)
+                            loopCounter++;
+                            if (loopCounter % 25 == 0) {
+                                float maxAmp = 0;
+                                for (int i = 0; i < CHUNK_SIZE; i++) {
+                                    if (Math.abs(audioBuffer[i]) > maxAmp) maxAmp = Math.abs(audioBuffer[i]);
+                                }
+                                Log.d(TAG, "[Debug] Mic Amp: " + maxAmp + " | MelBuf: " + melBufferSize 
+                                    + " | FeatBuf: " + featureBufferSize + " | Score: " + score);
+                            }
+
+                            if (score > DETECTION_THRESHOLD) {
+                                Log.i(TAG, "Wake word detected! Score: " + score);
+                                emitDetectionEvent(score);
+
+                                // Reset buffers after detection to prevent double-triggers
+                                melBufferSize = 0;
+                                featureBufferSize = 0;
+                            }
                         }
                     }
-                    // 2. Embedding Model (runs continuously on the sliding window)
-                    float[][][][] embeddingOutput = new float[1][1][1][96];
-                    embeddingInterpreter.run(embeddingInputBuffer, embeddingOutput);
-
-                    // Shift window and append new embedding frame
-                    float[] oldEmbedding = heyRouteInputBuffer[0][0];
-                    for (int i = 0; i < 15; i++) {
-                        heyRouteInputBuffer[0][i] = heyRouteInputBuffer[0][i+1];
-                    }
-                    heyRouteInputBuffer[0][15] = oldEmbedding;
-                    
-                    for (int j = 0; j < 96; j++) {
-                        heyRouteInputBuffer[0][15][j] = embeddingOutput[0][0][0][j];
-                    }
-
-                    // 3. Hey Route Model (runs continuously on the 16-frame embedding window)
-                    float[][] scoreOutput = new float[1][1];
-                    heyRouteInterpreter.run(heyRouteInputBuffer, scoreOutput);
-                    
-                    float score = scoreOutput[0][0];
-
-                    // Debug Logging: Print amplitude and score every ~2 seconds (25 frames * 80ms)
+                } else {
                     loopCounter++;
-                    if (loopCounter % 25 == 0) {
-                        float maxAmp = 0;
-                        for(int i=0; i<CHUNK_SIZE; i++) {
-                            if(Math.abs(audioBuffer[i]) > maxAmp) maxAmp = Math.abs(audioBuffer[i]);
-                        }
-                        Log.d(TAG, "[Debug] Mic Max Amplitude: " + maxAmp + " | Current Wake Score: " + score);
-                    }
-                    
-                    if (score > 0.4f) { // Wake Word Threshold (lowered slightly for better recall)
-                        Log.i(TAG, "Wake word detected! Confidence Score: " + score);
-                        emitDetectionEvent(score);
-                        
-                        // Clear buffers to avoid immediate double-trigger while allowing instant re-listening
-                        embeddingInputBuffer = new float[1][76][32][1];
-                        heyRouteInputBuffer = new float[1][16][96];
-                    }
                 }
             }
         }
