@@ -63,9 +63,12 @@ public class WakeWordService {
 
     private void loadModels() {
         try {
-            melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"));
-            embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"));
-            heyRouteInterpreter = new Interpreter(loadModelFile("hey_route.tflite"));
+            Interpreter.Options options = new Interpreter.Options();
+            options.setNumThreads(4); // Use 4 threads to prevent inference from falling behind real-time
+            
+            melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"), options);
+            embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"), options);
+            heyRouteInterpreter = new Interpreter(loadModelFile("hey_route.tflite"), options);
             Log.d(TAG, "OpenWakeWord Models loaded successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error loading TFLite models", e);
@@ -84,13 +87,14 @@ public class WakeWordService {
     public void startListening() {
         if (isRecording.get()) return;
 
-        int bufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE,
+        int minBufferSize = AudioRecord.getMinBufferSize(SAMPLE_RATE,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT);
                 
-        if (bufferSize < CHUNK_SIZE * 2) {
-            bufferSize = CHUNK_SIZE * 2;
-        }
+        // Use a much larger buffer (2 seconds) to absorb inference latency spikes
+        // preventing dropped audio chunks which causes inconsistent detection.
+        int preferredBufferSize = SAMPLE_RATE * 2 * 2; // 16000 samples * 2 bytes * 2 seconds
+        int bufferSize = Math.max(minBufferSize, preferredBufferSize);
 
         try {
             audioRecord = new AudioRecord(MediaRecorder.AudioSource.MIC,
