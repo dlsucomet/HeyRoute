@@ -126,6 +126,7 @@ public class WakeWordService {
         float[][] floatBuffer = new float[1][CHUNK_SIZE];
         
         float[][][][] melOutput = new float[1][1][1][32];
+        int loopCounter = 0;
 
         while (isRecording.get()) {
             int read = audioRecord.read(audioBuffer, 0, CHUNK_SIZE);
@@ -165,10 +166,20 @@ public class WakeWordService {
                     heyRouteInterpreter.run(heyRouteInputBuffer, scoreOutput);
                     
                     float score = scoreOutput[0][0];
+
+                    // Debug Logging: Print amplitude and score every ~2 seconds (25 frames * 80ms)
+                    loopCounter++;
+                    if (loopCounter % 25 == 0) {
+                        float maxAmp = 0;
+                        for(int i=0; i<CHUNK_SIZE; i++) {
+                            if(Math.abs(audioBuffer[i]) > maxAmp) maxAmp = Math.abs(audioBuffer[i]);
+                        }
+                        Log.d(TAG, "[Debug] Mic Max Amplitude: " + maxAmp + " | Current Wake Score: " + score);
+                    }
                     
                     if (score > 0.4f) { // Wake Word Threshold (lowered slightly for better recall)
                         Log.i(TAG, "Wake word detected! Confidence Score: " + score);
-                        emitDetectionEvent();
+                        emitDetectionEvent(score);
                         
                         // Clear buffers to avoid immediate double-trigger while allowing instant re-listening
                         embeddingInputBuffer = new float[1][76][32][1];
@@ -179,10 +190,10 @@ public class WakeWordService {
         }
     }
 
-    private void emitDetectionEvent() {
+    private void emitDetectionEvent(float score) {
         if (reactContext != null) {
             reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit("onWakeWordDetected", null);
+                    .emit("onWakeWordDetected", score);
         }
     }
 }
