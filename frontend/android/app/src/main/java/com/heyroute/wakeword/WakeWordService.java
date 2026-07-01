@@ -140,10 +140,13 @@ public class WakeWordService {
 
                     // Add all 5 frames to the embedding sliding window buffer
                     for (int f = 0; f < 5; f++) {
-                        // Shift frames left by 1
+                        // Rotate pointers to shift the window left by 1
+                        float[][] oldFrame = embeddingInputBuffer[0][0];
                         for (int i = 0; i < 75; i++) {
-                            System.arraycopy(embeddingInputBuffer[0][i + 1], 0, embeddingInputBuffer[0][i], 0, 32);
+                            embeddingInputBuffer[0][i] = embeddingInputBuffer[0][i + 1];
                         }
+                        embeddingInputBuffer[0][75] = oldFrame;
+                        
                         // Insert the new frame at the end
                         for (int j = 0; j < 32; j++) {
                             embeddingInputBuffer[0][75][j][0] = melOutput[0][0][f][j];
@@ -154,9 +157,12 @@ public class WakeWordService {
                     embeddingInterpreter.run(embeddingInputBuffer, embeddingOutput);
 
                     // Shift window and append new embedding frame
+                    float[] oldEmbedding = heyRouteInputBuffer[0][0];
                     for (int i = 0; i < 15; i++) {
-                        System.arraycopy(heyRouteInputBuffer[0][i+1], 0, heyRouteInputBuffer[0][i], 0, 96);
+                        heyRouteInputBuffer[0][i] = heyRouteInputBuffer[0][i+1];
                     }
+                    heyRouteInputBuffer[0][15] = oldEmbedding;
+                    
                     for (int j = 0; j < 96; j++) {
                         heyRouteInputBuffer[0][15][j] = embeddingOutput[0][0][0][j];
                     }
