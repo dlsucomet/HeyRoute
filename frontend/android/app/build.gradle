@@ -70,7 +70,7 @@ dependencies {
     implementation("com.facebook.react:react-android")
     implementation "com.google.android.gms:play-services-location:21.0.1"
     coreLibraryDesugaring "com.android.tools:desugar_jdk_libs_nio:2.0.3"
-    implementation 'org.tensorflow:tensorflow-lite:2.13.0'
+    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
     implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
 
     if (hermesEnabled.toBoolean()) {

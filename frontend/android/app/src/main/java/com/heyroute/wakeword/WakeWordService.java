@@ -48,7 +48,8 @@ public class WakeWordService {
     private void loadModels() {
         try {
             melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"));
-            
+            melspectrogramInterpreter.resizeInput(0, new int[]{1, CHUNK_SIZE}); // Dynamically size to 1280
+            melspectrogramInterpreter.allocateTensors();
             embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"));
             heyRouteInterpreter = new Interpreter(loadModelFile("hey_route.tflite"));
             Log.d(TAG, "OpenWakeWord Models loaded successfully");
@@ -124,8 +125,6 @@ public class WakeWordService {
     private void recordLoop() {
         short[] audioBuffer = new short[CHUNK_SIZE];
         float[][] floatBuffer = new float[1][CHUNK_SIZE];
-        
-        float[][][][] melOutput = new float[1][1][1][32];
         int loopCounter = 0;
 
         while (isRecording.get()) {
@@ -137,17 +136,20 @@ public class WakeWordService {
                 }
 
                 if (melspectrogramInterpreter != null) {
-                    // 1. Melspectrogram
+                    // 1. Melspectrogram Model
+                    float[][][][] melOutput = new float[1][1][5][32]; // Model outputs 5 frames for 1280 samples
                     melspectrogramInterpreter.run(floatBuffer, melOutput);
-                    
-                    // Shift window and append new mel frame
-                    for (int i = 0; i < 75; i++) {
-                        for (int j = 0; j < 32; j++) {
-                            embeddingInputBuffer[0][i][j][0] = embeddingInputBuffer[0][i+1][j][0];
+
+                    // Add all 5 frames to the embedding sliding window buffer
+                    for (int f = 0; f < 5; f++) {
+                        // Shift frames left by 1
+                        for (int i = 0; i < 75; i++) {
+                            System.arraycopy(embeddingInputBuffer[0][i + 1], 0, embeddingInputBuffer[0][i], 0, 32);
                         }
-                    }
-                    for (int j = 0; j < 32; j++) {
-                        embeddingInputBuffer[0][75][j][0] = melOutput[0][0][0][j];
+                        // Insert the new frame at the end
+                        for (int j = 0; j < 32; j++) {
+                            embeddingInputBuffer[0][75][j][0] = melOutput[0][0][f][j];
+                        }
                     }
                     // 2. Embedding Model (runs continuously on the sliding window)
                     float[][][][] embeddingOutput = new float[1][1][1][96];
