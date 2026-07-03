@@ -107,7 +107,7 @@ class ASREngine:
     # -----------------------
     async def send_to_heyroute(self, text, userId, sessionId):
         """
-        Sends the cleaned transcription to thebackend for processing.
+        Sends the cleaned transcription to the backend for processing.
 
         Returns the response from the backend.
         """
