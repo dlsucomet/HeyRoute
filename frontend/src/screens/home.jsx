@@ -18,7 +18,7 @@ import { customEvent, identifyDevice } from 'vexo-analytics';
 import DirectionsCard from "../components/directions-card";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
-import GoogleNavView from "../components/google-nav-view";
+import MapboxMapView from "../components/mapbox-map-view";
 import { useWakeWord } from "../hooks/useWakeWord";
 import supabase from '../supabase-client';
 import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
@@ -348,7 +348,7 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       
       {/* Map Background */}
-      <GoogleNavView previewMode={true} />
+      <MapboxMapView previewMode={true} />
 
       <View style={styles.navContainer} pointerEvents="box-none">
         <NavBar userId={userId} />

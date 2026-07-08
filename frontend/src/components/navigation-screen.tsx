@@ -3,7 +3,7 @@ import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native"
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-import GoogleNavView from "./google-nav-view";
+import MapboxMapView from "./mapbox-map-view";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
 
@@ -49,8 +49,10 @@ const NavigationScreen = () => {
   return (
     <View style={styles.container}>
       {/* 1. Full-screen Google Navigation View */}
-      <GoogleNavView 
-        destination={destination} 
+      <MapboxMapView
+        destination={destination}
+        routePolyline={routeData?.route?.full_geometry || routeData?.full_geometry || []}
+        previewMode={false} 
         onArrival={handleArrival} 
       />
 

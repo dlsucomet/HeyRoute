@@ -16,7 +16,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import Geolocation from "react-native-geolocation-service";
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
-import GoogleNavView from "../components/google-nav-view";
+import MapboxMapView from "../components/mapbox-map-view";
 import RouteSelectionPanel from "./route-selection-panel";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
@@ -465,7 +465,7 @@ const RoutePreviewScreen = () => {
       <View style={styles.container}>
 
         <View style={StyleSheet.absoluteFill}>
-          <GoogleNavView
+          <MapboxMapView
             previewMode={true}
             destination={destination}
             routePolyline={activeFullGeometry}
