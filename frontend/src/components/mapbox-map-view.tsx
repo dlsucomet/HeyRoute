@@ -28,27 +28,32 @@ const MapboxMapView = ({
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
 
-  // Request location permissions on Android
+  // Wait for location permissions on Android (requested by parent)
   useEffect(() => {
-    const requestPermissions = async () => {
+    let interval: ReturnType<typeof setInterval>;
+    
+    const checkPermissions = async () => {
       if (Platform.OS === 'android') {
-        try {
-          const granted = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-          );
-          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            setPermissionsGranted(true);
-          } else {
-            console.warn('[MapboxMapView] Location permission denied');
-          }
-        } catch (err) {
-          console.warn('[MapboxMapView] Permission request error:', err);
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        );
+        if (granted) {
+          setPermissionsGranted(true);
+          if (interval) clearInterval(interval);
         }
       } else {
         setPermissionsGranted(true);
       }
     };
-    requestPermissions();
+
+    checkPermissions();
+    if (Platform.OS === 'android') {
+      interval = setInterval(checkPermissions, 1000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   // Update Route GeoJSON when routePolyline changes

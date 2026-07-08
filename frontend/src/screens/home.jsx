@@ -107,21 +107,17 @@ const HomeScreen = () => {
    * Android specifically needs RECORD_AUDIO permission for both Wake Word (OpenWakeWord) and ASR (Voice Assistant).
    */
   useEffect(() => {
-    const checkMicPermission = async () => {
+    const checkPermissions = async () => {
       if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        if (!granted) {
-          const reqResult = await PermissionsAndroid.request(
+        const hasMic = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+        const hasLoc = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        
+        if (!hasMic || !hasLoc) {
+          const statuses = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            {
-              title: "Microphone Permission",
-              message: "HeyRoute needs microphone access for voice control.",
-              buttonPositive: "Allow"
-            }
-          );
-          if (reqResult === PermissionsAndroid.RESULTS.GRANTED) {
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          ]);
+          if (statuses[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED) {
             setMicGranted(true);
           }
         } else {
@@ -131,7 +127,7 @@ const HomeScreen = () => {
         setMicGranted(true); // iOS permissions are handled natively by Info.plist
       }
     };
-    checkMicPermission();
+    checkPermissions();
   }, []);
 
   useEffect(() => {
