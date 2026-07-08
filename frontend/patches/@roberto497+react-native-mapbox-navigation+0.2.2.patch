@@ -1,0 +1,76 @@
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
+index 504168e..bab10e3 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
+@@ -59,4 +59,9 @@ class MapboxNavigationManager(var mCallerContext: ReactApplicationContext) : Sim
+     fun setShowsEndOfRouteFeedback(view: MapboxNavigationView, showsEndOfRouteFeedback: Boolean) {
+         view.setShowsEndOfRouteFeedback(showsEndOfRouteFeedback)
+     }
++
++    @ReactProp(name = "exclude")
++    fun setExclude(view: MapboxNavigationView, exclude: String?) {
++        view.setExclude(exclude)
++    }
+ }
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
+index 519c58c..377fa2f 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
+@@ -81,6 +81,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+     private var arrivalNotificationHasDisplayed = false
+ 
+     private var destination: Point? = null
++    private var exclude: String? = null
+     private var showsEndOfRouteFeedback = false
+ 
+     /**
+@@ -550,15 +551,20 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         } ?: return
+ 
+         try {
++            val routeOptionsBuilder = RouteOptions.builder()
++                .applyDefaultNavigationOptions()
++                .applyLanguageAndVoiceUnitOptions(context)
++                .coordinatesList(listOf(originPoint, destination))
++                .profile(DirectionsCriteria.PROFILE_DRIVING)
++                .steps(true)
++                .language("en")
++
++            if (!exclude.isNullOrEmpty()) {
++                routeOptionsBuilder.exclude(exclude)
++            }
++
+             mapboxNavigation.requestRoutes(
+-                RouteOptions.builder()
+-                    .applyDefaultNavigationOptions()
+-                    .applyLanguageAndVoiceUnitOptions(context)
+-                    .coordinatesList(listOf(originPoint, destination))
+-                    .profile(DirectionsCriteria.PROFILE_DRIVING)
+-                    .steps(true)
+-                    .language("pt-BR")
+-                    .build(),
++                routeOptionsBuilder.build(),
+                 object : NavigationRouterCallback {
+                     override fun onRoutesReady(
+                         routes: List<NavigationRoute>,
+@@ -626,6 +632,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         this.destination = destination
+     }
+ 
++    fun setExclude(exclude: String?) {
++        this.exclude = exclude
++    }
++
+     fun setShowsEndOfRouteFeedback(showsEndOfRouteFeedback: Boolean) {
+         this.showsEndOfRouteFeedback = showsEndOfRouteFeedback
+     }
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts b/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
+index 566ba96..0b6042c 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
+@@ -32,4 +32,5 @@ export interface IMapboxNavigationProps {
+   onChat?: () => void;
+   showsEndOfRouteFeedback?: boolean;
+   hideStatusView?: boolean;
++  exclude?: string;
+ }

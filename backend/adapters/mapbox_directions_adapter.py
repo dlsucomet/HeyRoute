@@ -272,6 +272,7 @@ class MapboxDirectionsAdapter(APIAdapter):
                 "waypoint_indices": mapbox_waypoints,
                 "turn_indices":    turn_indices,
                 "steps_instructions": steps_instructions,
+                "exclude_string": ",".join(excludes) if excludes else None,
             })
 
         return routes_output, mapbox_ms
