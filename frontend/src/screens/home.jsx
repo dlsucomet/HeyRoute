@@ -56,6 +56,7 @@ const HomeScreen = () => {
 
   const [autoTriggerNav, setAutoTriggerNav] = useState(false);
   const [fromHistoryNav, setFromHistoryNav] = useState(false);
+  const [micGranted, setMicGranted] = useState(false);
 
   // Control refs for passing auto-start triggers to the Modal
   const shouldAutoStartRecording = useRef(false);
@@ -112,7 +113,7 @@ const HomeScreen = () => {
           PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
         );
         if (!granted) {
-          await PermissionsAndroid.request(
+          const reqResult = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
             {
               title: "Microphone Permission",
@@ -120,7 +121,14 @@ const HomeScreen = () => {
               buttonPositive: "Allow"
             }
           );
+          if (reqResult === PermissionsAndroid.RESULTS.GRANTED) {
+            setMicGranted(true);
+          }
+        } else {
+          setMicGranted(true);
         }
+      } else {
+        setMicGranted(true); // iOS permissions are handled natively by Info.plist
       }
     };
     checkMicPermission();
@@ -163,7 +171,7 @@ const HomeScreen = () => {
   /**
    *Listens for "Hey Route". If detected, it sets a ref and opens the Voice Modal.
    */
-  const wakeWordVisible = isFocused && !isModalVisible;
+  const wakeWordVisible = isFocused && !isModalVisible && micGranted;
 
   useWakeWord({
     visible: wakeWordVisible,

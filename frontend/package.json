@@ -65,5 +65,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "postinstall-postinstall@2.1.0": true,
+    "react-native-nitro-modules@0.30.2": true
   }
 }
