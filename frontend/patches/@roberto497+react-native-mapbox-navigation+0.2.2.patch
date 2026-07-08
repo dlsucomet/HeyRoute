@@ -13,10 +13,18 @@ index 504168e..bab10e3 100644
 +    }
  }
 diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
-index 519c58c..c0e7eaf 100644
+index 519c58c..3a893b9 100644
 --- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
 +++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
-@@ -81,6 +81,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -54,6 +54,7 @@ import com.mapbox.navigation.tripdata.progress.model.EstimatedTimeToArrivalForma
+ import com.mapbox.navigation.tripdata.progress.model.PercentDistanceTraveledFormatter
+ import com.mapbox.navigation.tripdata.progress.model.TimeRemainingFormatter
+ import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateFormatter
++import com.mapbox.navigation.ui.maps.NavigationStyles
+ import com.mapbox.navigation.ui.maps.camera.NavigationCamera
+ import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
+ import com.mapbox.navigation.ui.maps.camera.lifecycle.NavigationBasicGesturesHandler
+@@ -81,6 +82,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
      private var arrivalNotificationHasDisplayed = false
  
      private var destination: Point? = null
@@ -24,7 +32,7 @@ index 519c58c..c0e7eaf 100644
      private var showsEndOfRouteFeedback = false
  
      /**
-@@ -241,10 +242,13 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -241,10 +243,13 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          viewportDataSource.evaluate()
  
          // draw the upcoming maneuver arrow on the map
@@ -40,7 +48,7 @@ index 519c58c..c0e7eaf 100644
          }
  
          // update top banner with maneuver instructions
-@@ -302,8 +306,8 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -302,8 +307,8 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
              routeLineApi.setNavigationRoutes(
                  routeUpdateResult.navigationRoutes
              ) { value ->
@@ -51,7 +59,7 @@ index 519c58c..c0e7eaf 100644
                  }
              }
  
-@@ -312,8 +316,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -312,8 +317,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
              viewportDataSource.evaluate()
          } else {
              // remove the route line and route arrow from the map
@@ -61,7 +69,7 @@ index 519c58c..c0e7eaf 100644
                  routeLineApi.clearRouteLine { value ->
                      routeLineView.renderClearRouteLineValue(
                          style,
-@@ -339,6 +342,11 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -339,6 +343,11 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          post(measureAndLayout)
      }
  
@@ -73,7 +81,38 @@ index 519c58c..c0e7eaf 100644
      private val measureAndLayout = Runnable {
          measure(
              MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
-@@ -481,7 +489,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -443,15 +452,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                 .build()
+         )
+ 
+-        // load map style
+-        binding.mapView.scalebar.enabled = false
+-        binding.mapView.compass.enabled = false
+-        binding.mapView.mapboxMap.loadStyle(Style.MAPBOX_STREETS)
+-
+         // configure Route line options
+         val mapboxRouteLineApiOptions = MapboxRouteLineApiOptions.Builder().build()
+         val mapboxRouteLineViewOptions = MapboxRouteLineViewOptions.Builder(context)
+-            .routeLineBelowLayerId("road-label")
++            .routeLineBelowLayerId("road-label-navigation")
+             .build()
+         val mapboxRouteArrowOptions = RouteArrowOptions.Builder(context).build()
+ 
+@@ -459,6 +463,13 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         routeLineView = MapboxRouteLineView(mapboxRouteLineViewOptions)
+         routeArrowView = MapboxRouteArrowView(mapboxRouteArrowOptions)
+ 
++        // load map style
++        binding.mapView.scalebar.enabled = false
++        binding.mapView.compass.enabled = false
++        binding.mapView.mapboxMap.loadStyle(NavigationStyles.NAVIGATION_DAY_STYLE) { style ->
++            routeLineView.initializeLayers(style)
++        }
++
+         // initialize view interactions
+         binding.stop.setOnClickListener {
+             clearRouteAndStopNavigation()
+@@ -481,7 +492,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
                  .getJSModule(RCTEventEmitter::class.java)
                  .receiveEvent(id, "onChat", event)
          }
@@ -82,7 +121,7 @@ index 519c58c..c0e7eaf 100644
          binding.startNavigation.setOnClickListener {
              binding.startNavigation.visibility = View.GONE
              this.destination?.let { it ->  findRoute(it) }
-@@ -550,15 +558,20 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -550,15 +561,20 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          } ?: return
  
          try {
@@ -111,7 +150,7 @@ index 519c58c..c0e7eaf 100644
                  object : NavigationRouterCallback {
                      override fun onRoutesReady(
                          routes: List<NavigationRoute>,
-@@ -626,6 +639,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -626,6 +642,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          this.destination = destination
      }
  
