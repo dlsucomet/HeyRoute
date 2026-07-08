@@ -13,7 +13,7 @@ index 504168e..bab10e3 100644
 +    }
  }
 diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
-index 519c58c..377fa2f 100644
+index 519c58c..c284b92 100644
 --- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
 +++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
 @@ -81,6 +81,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
@@ -24,7 +24,24 @@ index 519c58c..377fa2f 100644
      private var showsEndOfRouteFeedback = false
  
      /**
-@@ -550,15 +551,20 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -451,7 +452,6 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         // configure Route line options
+         val mapboxRouteLineApiOptions = MapboxRouteLineApiOptions.Builder().build()
+         val mapboxRouteLineViewOptions = MapboxRouteLineViewOptions.Builder(context)
+-            .routeLineBelowLayerId("road-label")
+             .build()
+         val mapboxRouteArrowOptions = RouteArrowOptions.Builder(context).build()
+ 
+@@ -481,7 +481,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                 .getJSModule(RCTEventEmitter::class.java)
+                 .receiveEvent(id, "onChat", event)
+         }
+-        binding.startNavigation.text = "Iniciar navegação";
++        binding.startNavigation.text = "Start Navigation";
+         binding.startNavigation.setOnClickListener {
+             binding.startNavigation.visibility = View.GONE
+             this.destination?.let { it ->  findRoute(it) }
+@@ -550,15 +550,20 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          } ?: return
  
          try {
@@ -53,7 +70,7 @@ index 519c58c..377fa2f 100644
                  object : NavigationRouterCallback {
                      override fun onRoutesReady(
                          routes: List<NavigationRoute>,
-@@ -626,6 +632,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+@@ -626,6 +631,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
          this.destination = destination
      }
  
