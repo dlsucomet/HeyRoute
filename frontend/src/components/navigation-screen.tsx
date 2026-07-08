@@ -6,6 +6,7 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import MapboxMapView from "./mapbox-map-view";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
+import { useNavigationEngine } from "../hooks/useNavigationEngine";
 
 const NavigationScreen = () => {
   const navigation = useNavigation() as any;
@@ -24,6 +25,9 @@ const NavigationScreen = () => {
   const [wakeWordActive, setWakeWordActive] = useState(false);
 
   const shouldAutoStartVadMode = useRef(false);
+
+  // --- NAVIGATION ENGINE ---
+  const { currentInstruction, distanceToNextTurn, onLocationUpdate } = useNavigationEngine(routeData?.route || routeData || null);
 
   // --- WAKE WORD HOOK ---
   useWakeWord({
@@ -48,13 +52,28 @@ const NavigationScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* 1. Full-screen Google Navigation View */}
+      {/* 1. Full-screen Mapbox Navigation View */}
       <MapboxMapView
         destination={destination}
         routePolyline={routeData?.route?.full_geometry || routeData?.full_geometry || []}
         previewMode={false} 
         onArrival={handleArrival} 
+        onLocationUpdate={onLocationUpdate}
       />
+
+      {/* 1.5 Custom Top Navigation Banner */}
+      <View style={styles.topBanner}>
+        <Text style={styles.instructionText} numberOfLines={2}>
+          {currentInstruction}
+        </Text>
+        {distanceToNextTurn !== null && (
+          <Text style={styles.distanceText}>
+            {distanceToNextTurn > 1000 
+              ? `In ${(distanceToNextTurn / 1000).toFixed(1)} km` 
+              : `In ${Math.round(distanceToNextTurn)} m`}
+          </Text>
+        )}
+      </View>
 
       {/* 2. Floating Mic Button for Voice Commands */}
       <View style={styles.micContainer}>
@@ -117,7 +136,7 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     position: "absolute",
-    top: 50,
+    top: 130, // move down below banner
     left: 20,
     backgroundColor: "white",
     padding: 10,
@@ -167,6 +186,35 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#666",
     fontWeight: "600",
+  },
+  topBanner: {
+    position: "absolute",
+    top: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1c1c1c",
+    borderRadius: 15,
+    padding: 20,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  instructionText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    flex: 1,
+    marginRight: 10,
+  },
+  distanceText: {
+    color: "#66b3ff",
+    fontSize: 16,
+    fontWeight: "800",
   },
 });
 

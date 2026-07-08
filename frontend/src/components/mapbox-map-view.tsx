@@ -13,6 +13,7 @@ export interface MapboxMapViewProps {
   previewMode?: boolean;
   routePolyline?: any[];
   onEtaUpdated?: (eta: string, distanceKm?: number) => void;
+  onLocationUpdate?: (lat: number, lng: number) => void;
 }
 
 const MapboxMapView = ({
@@ -21,6 +22,7 @@ const MapboxMapView = ({
   previewMode = false,
   routePolyline,
   onEtaUpdated,
+  onLocationUpdate,
 }: MapboxMapViewProps) => {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
@@ -133,6 +135,11 @@ const MapboxMapView = ({
           <Mapbox.UserLocation 
              visible={true}
              showsUserHeadingIndicator={true}
+             onUpdate={(location) => {
+               if (onLocationUpdate && location?.coords) {
+                 onLocationUpdate(location.coords.latitude, location.coords.longitude);
+               }
+             }}
           />
         )}
 
