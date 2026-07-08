@@ -14,7 +14,7 @@ const NavigationScreen = () => {
 
   // The backend passes the route details via route.params.
   // The most critical part for Nav SDK is destination.
-  const { destination, userId, sessionId } = route.params || {};
+  const { destination, userId, sessionId, routeData } = route.params || {};
 
   // --- VOICE & MODAL STATE ---
   const [isModalVisible, setIsModalVisible] = useState(false);
