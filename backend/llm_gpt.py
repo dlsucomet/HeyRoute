@@ -18,6 +18,25 @@ load_dotenv()
 QWEN_API_URL = os.getenv("QWEN_API_URL", "http://172.16.3.213:80/v1/chat/completions")
 QWEN_MODEL_NAME = os.getenv("QWEN_MODEL_NAME", "Qwen/Qwen2.5-7B-Instruct")
 
+_AUTO_MODEL_NAME = None
+
+async def _get_auto_model_name(client: httpx.AsyncClient):
+    global _AUTO_MODEL_NAME
+    if _AUTO_MODEL_NAME:
+        return _AUTO_MODEL_NAME
+    try:
+        models_url = QWEN_API_URL.replace("/chat/completions", "/models")
+        response = await client.get(models_url, timeout=5.0)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("data") and len(data["data"]) > 0:
+                _AUTO_MODEL_NAME = data["data"][0]["id"]
+                print(f"[LLM] Auto-detected model name from vLLM: {_AUTO_MODEL_NAME}")
+                return _AUTO_MODEL_NAME
+    except Exception as e:
+        print(f"[LLM] Failed to auto-detect model name: {e}")
+    return QWEN_MODEL_NAME
+
 async def process_with_gpt(conversation_history, model_name=None):
     """
     Sends a conversation history to the self-hosted Qwen LLM server and returns the generated response.
@@ -42,6 +61,10 @@ async def process_with_gpt(conversation_history, model_name=None):
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
+            # Auto-detect model if we are using the default
+            if effective_model == "Qwen/Qwen2.5-7B-Instruct":
+                effective_model = await _get_auto_model_name(client)
+
             # Request payload — OpenAI-compatible format
             data = {
                 "model": effective_model,

@@ -212,7 +212,8 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
         current_turn = state.increment_turn()
         user_input = payload.transcript.strip()
         if not user_input:
-            raise HTTPException(status_code=400, detail="Empty transcript received.")
+            # Instead of crashing, just return a polite request to speak again
+            return {"heyroute": "I didn't catch that. Could you say it again?", "history": state.conversation_history, "turn_number": current_turn, "intents": {}}
         state.conversation_history.append({"role": "user", "content": user_input})
         
         # ----------  Semantic Resolution ----------
@@ -376,7 +377,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                     await log_system_error(
                         user_id, session_id, "geocoding_zero_results", 
                         "Geocoder returned null for origin or destination",
-                        type(e).__name__,
+                        "GeocodingError",
                         {"gpt_json": state.final_gpt_response}
                     )
                     return {"heyroute": response, "history": state.conversation_history, "turn_number": current_turn, "intents": intents, "intent_detect_latency": intent_detect_latency, "final_json_latency": final_json_latency, "user_id": user_id, "session_id": session_id}
@@ -458,7 +459,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 response["intents"] = intents
                 asyncio.create_task(log_event(user_id=user_id, session_id=session_id, event_type="ROUTES_CREATED_RESPONSE", response=response.get("heyroute"), turn_number=current_turn))
                 return response
-            except (json.JSONDecodeError, TypeError):
+            except (json.JSONDecodeError, TypeError) as e:
                 await log_system_error(
                     user_id, session_id, "llm_json_format_error", 
                     "LLM failed to return valid JSON", 
@@ -474,6 +475,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
             road = ""
             params = state.current_route_params
             destination = None
+            preference_value = None
             if state.semantic_context["destination_known"]:
                 destination = state.semantic_context["destination_label"]
             else:
@@ -920,7 +922,7 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
                 "I'm sorry, I'm having trouble connecting to the routing service right now. "
                 "Please try again later."
             )
-            return {"error": str(e)}, {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
+            return [], {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
 
         if routes_data:
             break
