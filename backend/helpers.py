@@ -103,7 +103,7 @@ async def normalize_road_name(road_name: str) -> str:
     for standard_name, aliases in ROAD_ALIASES.items():
         if road_upper in [a.upper() for a in aliases]:
             return standard_name
-    return road_name.strip()
+    return road_name.strip().title()
 
 async def check_label_role(text: str, label: str):
     """

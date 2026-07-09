@@ -53,7 +53,7 @@ async def get_road_polygon(client, road_name: str):
     # Fetch the target road geometry
     road_query = f"""
     [out:json][timeout:25];
-    way["highway"]["name"~"^{road_name}$", i]({bbox});
+    way["highway"]["name"="{road_name}"]({bbox});
     (._;>;);
     out tags geom;
     """
@@ -61,7 +61,7 @@ async def get_road_polygon(client, road_name: str):
     # Fetch nearby roads for intersections and layer filtering
     nearby_query = f"""
     [out:json][timeout:25];
-    way["highway"]["name"~"^{road_name}$", i]({bbox})->.targetRoad;
+    way["highway"]["name"="{road_name}"]({bbox})->.targetRoad;
     way["highway"](around.targetRoad:30)({bbox})["name"];
     (._;>;);
     out tags geom;
