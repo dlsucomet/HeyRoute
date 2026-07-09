@@ -113,7 +113,7 @@ Determine the user's navigation-related intent based on the ongoing conversation
 
 Respond **only** with a JSON object. Do not add any extra text, comments, or greetings.
 Use **lowercase** true or false (not True/False).
-{ "clarifications": true/false, "trip_changes": true/false, "cancellation": true/false, "start_nav": true/false, "generate_routes": true/false, "request_alternates": true/false, "select_route": true/false }
+{ "clarifications": false, "trip_changes": false, "cancellation": false, "start_nav": false, "generate_routes": false, "request_alternates": false, "select_route": false }
 
 - 'clarifications' = true if the user's request or destination is ambiguous, incomplete, or conflicting.
 - 'trip_changes' = true if the user modifies, corrects, or adds details after a destination has already been established.
@@ -152,8 +152,8 @@ Use **lowercase** true or false (not True/False).
 Exactly ONE value must be true.
 
 { 
-  "preference_remembering": true/false,
-  "no_preference_remembering": true/false
+  "preference_remembering": false,
+  "no_preference_remembering": false
 }
 
 Rules:
@@ -171,10 +171,10 @@ Use **lowercase** true or false (not True/False).
 Exactly ONE value must be true.
 
 {
-  "request_alternates": true/false,
-  "select_route": true/false,
-  "cancellation": true/false,
-  "start_new_trip": true/false
+  "request_alternates": false,
+  "select_route": false,
+  "cancellation": false,
+  "start_new_trip": false
 }
 
 Rules:
