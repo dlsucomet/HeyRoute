@@ -14,7 +14,19 @@ const NavigationScreen = () => {
 
   // The backend passes the route details via route.params.
   // The most critical part for Nav SDK is destination.
-  const { destination, userId, sessionId, routeData } = route.params || {};
+  const { destination, full_geometry, userId, sessionId, routeData } = route.params || {};
+
+  // Extract destination coordinates properly.
+  // The 'destination' param is often a string address, so we extract from full_geometry.
+  let destCoords = [0, 0];
+  if (full_geometry && full_geometry.length > 0) {
+    const lastPoint = full_geometry[full_geometry.length - 1];
+    destCoords = [lastPoint[0], lastPoint[1]]; // [lng, lat]
+  } else if (Array.isArray(destination)) {
+    destCoords = [destination[0], destination[1]];
+  } else {
+    destCoords = [destination?.lng || destination?.longitude || 0, destination?.lat || destination?.latitude || 0];
+  }
 
   // --- VOICE & MODAL STATE ---
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -51,7 +63,7 @@ const NavigationScreen = () => {
     <View style={styles.container}>
       {/* 1. Full-screen Native Mapbox Navigation SDK */}
       <MapboxNavigation
-        destination={[destination?.lng || destination?.longitude || 0, destination?.lat || destination?.latitude || 0]}
+        destination={destCoords}
         exclude={routeData?.route?.exclude_string || routeData?.exclude_string}
         showsEndOfRouteFeedback={true}
         onArrive={handleArrival}
