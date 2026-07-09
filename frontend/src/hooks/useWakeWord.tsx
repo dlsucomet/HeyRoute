@@ -43,11 +43,6 @@ export const useWakeWord = ({
       console.log(`\n======================================================`);
       console.log(`🎙️ [WakeWord] "HEY ROUTE" DETECTED! (Score: ${score})`);
       console.log(`======================================================\n`);
-      
-      if (Platform.OS === 'android') {
-        const { ToastAndroid } = require('react-native');
-        ToastAndroid.show(`Wake Word Detected! (Score: ${score})`, ToastAndroid.SHORT);
-      }
 
       if (isRecordingRef.current || isProcessingRef.current || vadModeRef.current) {
         console.log("[WakeWord] Blocked — app is busy.");
