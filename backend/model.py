@@ -474,6 +474,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
             road = ""
             params = state.current_route_params
             destination = None
+            preference_value = None
             if state.semantic_context["destination_known"]:
                 destination = state.semantic_context["destination_label"]
             else:
@@ -920,7 +921,7 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
                 "I'm sorry, I'm having trouble connecting to the routing service right now. "
                 "Please try again later."
             )
-            return {"error": str(e)}, {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
+            return [], {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
 
         if routes_data:
             break
