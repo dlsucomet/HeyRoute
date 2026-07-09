@@ -3,9 +3,8 @@ This module implements the automatic speech recognition (ASR) functionality for 
 
 Handles:
     - Receiving audio files from the client
-    - Transcribing audio using Groq's Whisper API
-    - Cleaning transcriptions with Groq's LLM to fix errors
-    - Sending cleaned transcriptions to HeyRoute's backend for processing
+    - Transcribing audio using remote Qwen3-ASR GPU server
+    - Sending transcriptions to HeyRoute's backend for processing
 """
 
 import asyncio
@@ -21,7 +20,6 @@ import edge_tts
 from fastapi import FastAPI, Header, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from prompts import ASR_PROMPT
 from db import store_audio_file, store_interactions, store_metrics, log_session_metadata, log_event, log_system_error
 from dotenv import load_dotenv
 
@@ -50,134 +48,59 @@ class ASREngine:
     """
     Handles the entire ASR process:
         - from receiving audio
-        - transcribing with Groq's Whisper API
-        - cleaning the transcription with Groq's LLM
+        - transcribing with remote Qwen3-ASR GPU server
         - sending the final text to HeyRoute's backend. 
     
     It also manages session and user IDs, as well as the current location. 
     """
 
     def __init__(self):
-        self.groq_api_key = os.getenv("GROQ_API_KEY")
-        self.groq_enabled = True
+        # We now point to the external GPU server for Qwen3-ASR
+        self.gpu_server_url = os.getenv("REMOTE_ASR_URL", "http://altdsidccf.dlsu.edu.ph:33070")
+        self.gpu_api_key = os.getenv("REMOTE_ASR_API_KEY", "")
         self.current_location = None
         self.client = httpx.AsyncClient(timeout=30)
 
     # -----------------------
-    # WHISPER TRANSCRIPTION
+    # REMOTE GPU TRANSCRIPTION
     # -----------------------
-    async def transcribe_with_groq(self, audio_file, userId, sessionId):
+    async def transcribe_with_remote_gpu(self, audio_file, userId, sessionId):
         """
-        Transcribe audio using Groq's Whisper API.
+        Transcribe audio using our self-hosted Qwen3-ASR server.
         Returns the raw transcription text.
         """
-
         try:
             files = {"file": ("audio.wav", io.BytesIO(audio_file), "audio/wav")}
-            headers = {"Authorization": f"Bearer {self.groq_api_key}"}
+            headers = {
+                "X-API-Key": self.gpu_api_key,
+                "X-User-ID": userId,
+                "X-Session-ID": sessionId
+            }
             
-            print(f"DEBUG: Uploading {len(audio_file) / 1024:.2f} KB to Groq")
+            print(f"DEBUG: Uploading {len(audio_file) / 1024:.2f} KB to Remote GPU ASR")
             start = time.perf_counter()
             response = await self.client.post(
-                "https://api.groq.com/openai/v1/audio/transcriptions",
+                f"{self.gpu_server_url}/transcribe",
                 headers=headers,
-                files=files,
-                data={"model": "whisper-large-v3-turbo"}
+                files=files
             )
             end = time.perf_counter()
             total = end - start
-            print("Total time taken for Groq/Whisper: ", total)
+            print("Total time taken for GPU ASR: ", total)
             if response.status_code == 200:
-                return response.json()["text"].strip()
-            raise Exception(f"Groq Whisper error: {response.text}")
+                data = response.json()
+                return data.get("text", "").strip()
+            raise Exception(f"GPU ASR error: {response.text}")
         except Exception as e:
             asyncio.create_task(log_system_error(
                 user_id=userId,
                 session_id=sessionId,
-                function_name="transcribe_with_groq",
+                function_name="transcribe_with_remote_gpu",
                 error_msg=str(e),
                 error_type=type(e).__name__,
-                payload={"audio_file": audio_file}
+                payload={"audio_file": "binary_data"}
             ))
             return ""
-
-    # -----------------------
-    # AI CLEANING
-    # -----------------------
-    async def call_groq_ai(self, text, userId, sessionId):
-        """
-        Use Groq's LLM to clean up transcription errors (spelling errors) and unclear words in the transcription.
-        Returns the corrected text.
-        """
-
-        if not self.groq_enabled:
-            return text
-        
-        try:
-            data = {
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": ASR_PROMPT},
-                    {"role": "user", "content": text},
-                ],
-                "temperature": 0.1
-            }
-
-            headers = {
-                'Authorization': f'Bearer {self.groq_api_key}',
-                'Content-Type': 'application/json',
-            }
-
-            response = await self.client.post(
-                'https://api.groq.com/openai/v1/chat/completions',
-                headers=headers,
-                json=data
-            )
-
-            if response.status_code == 200:
-                ai_text = response.json()['choices'][0]['message']['content'].strip()
-                return self.clean_ai_response(ai_text, text)
-
-            return text
-
-        except Exception as e:
-            asyncio.create_task(log_system_error(
-                user_id=userId,
-                session_id=sessionId,
-                function_name="call_groq_ai",
-                error_msg=str(e),
-                error_type=type(e).__name__,
-                payload={"original_text": text}
-            ))
-            return text
-
-    def clean_ai_response(self, ai_text, original_text):
-        """
-        Cleans the AI response by removing common prefixes.
-
-        Returns the cleaned text or original text if cleaning results in empty string.
-        """
-
-        prefixes = [
-            "corrected transcription:",
-            "corrected text:",
-            "here is the corrected text:",
-            "output:",
-            "result:",
-            "enhanced text:"
-        ]
-
-        cleaned = ai_text.strip()
-
-        for p in prefixes:
-            if cleaned.lower().startswith(p.lower()):
-                cleaned = cleaned[len(p):].strip()
-                cleaned = re.sub(r'^[:]\s*', '', cleaned).strip()
-
-        if not cleaned:
-            return original_text
-
-        return cleaned
 
     # -----------------------
     # SEND TO HEYROUTE LLM
@@ -240,18 +163,26 @@ async def process_audio(
     user_id: str = Header(None, alias="X-User-ID"),
     session_id: str = Header(None, alias="X-Session-ID"),
     device_model: str = Header(None, alias="X-Device-Model"),
-    connection_type: str = Header(None, alias="X-Connection-Type")
+    connection_type: str = Header(None, alias="X-Connection-Type"),
+    current_lat: str = Header(None, alias="X-Current-Lat"),
+    current_lng: str = Header(None, alias="X-Current-Lng")
 ):
     """
     Endpoint to receive audio file, process it through ASR engine, and return results.
 
     Key Processing Steps:
     1. Save the uploaded audio file (.wav)
-    2. Transcribe with Groq's Whisper API
-    3. Clean the transcription with Groq's LLM
-    4. Send the cleaned text to HeyRoute's backend
+    2. Transcribe with our remote Qwen3-ASR GPU server
+    3. Send the transcribed text to HeyRoute's backend
     5. Return the original transcription, cleaned transcription, and HeyRoute's response
     """
+
+    if current_lat is not None and current_lng is not None:
+        try:
+            asr.current_location = {"lat": float(current_lat), "lng": float(current_lng)}
+            print(f"DEBUG: Updated current_location from headers: {asr.current_location}")
+        except ValueError:
+            print(f"WARNING: Invalid coordinates received in headers: lat={current_lat}, lng={current_lng}")
 
     asyncio.create_task(log_session_metadata(user_id, session_id, device_model, connection_type))
     asyncio.create_task(log_event(user_id=user_id, session_id=session_id, event_type="VOICE_ACTIVATED", response="", turn_number=0))
@@ -280,17 +211,19 @@ async def process_audio(
     save_done = time.perf_counter()
     
     try:
-        # 2. Use your existing Groq/HeyRoute logic
-        original_text = await asr.transcribe_with_groq(file_content, user_id, session_id)
+        # 2. Transcribe with remote GPU (Qwen3-ASR)
+        original_text = await asr.transcribe_with_remote_gpu(file_content, user_id, session_id)
         asr_done = time.perf_counter()
 
-        enhanced_text = await asr.call_groq_ai(original_text, user_id, session_id)
+        # No AI cleaning needed since Qwen3 is highly accurate
+        enhanced_text = original_text
         cleaning_done = time.perf_counter()
 
+        # 3. Process LLM route
         result = await asr.send_to_heyroute(enhanced_text, user_id, session_id)
         total_done = time.perf_counter()
 
-        response=result.get("heyroute", "No response received.")
+        response = result.get("heyroute", "No response received.")
         conversation_history = result.get("history")
         turn_number = result.get("turn_number")
         intents = result.get("intents")
@@ -298,7 +231,7 @@ async def process_audio(
 
         save_ms = (save_done - start_time) * 1000
         asr_ms = (asr_done - save_done) * 1000
-        cleaning_ms = (cleaning_done - asr_done) * 1000
+        cleaning_ms = 0
         gpt_ms = result.get("gpt_latency", 0)
         ors_ms = result.get("ors_latency", 0)
         intent_detect_ms = result.get("intent_detect_latency", 0)

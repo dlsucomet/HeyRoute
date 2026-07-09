@@ -7,12 +7,10 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "patch-package"
   },
   "dependencies": {
-    "@googlemaps/react-native-navigation-sdk": "^0.16.3",
-    "@picovoice/porcupine-react-native": "^4.0.0",
-    "@picovoice/react-native-voice-processor": "^1.2.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/netinfo": "^12.0.1",
     "@react-native-vector-icons/material-icons": "^12.5.0",
@@ -20,8 +18,12 @@
     "@react-native/new-app-screen": "0.82.0",
     "@react-navigation/native": "^7.1.18",
     "@react-navigation/native-stack": "^7.3.27",
+    "@rnmapbox/maps": "10.3.2",
+    "@roberto497/react-native-mapbox-navigation": "^0.2.2",
     "@supabase/supabase-js": "^2.77.0",
     "metro-config": "^0.83.3",
+    "patch-package": "^8.0.1",
+    "postinstall-postinstall": "^2.1.0",
     "react": "19.1.1",
     "react-native": "0.82.0",
     "react-native-dotenv": "^3.4.11",
@@ -63,5 +65,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "allowScripts": {
+    "postinstall-postinstall@2.1.0": true,
+    "react-native-nitro-modules@0.30.2": true
   }
 }

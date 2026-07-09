@@ -9,6 +9,7 @@ Handles:
 from fastapi import APIRouter
 from pydantic import BaseModel
 from llm_gpt import process_with_gpt
+from helpers import extract_json
 
 # Defines a new FastAPI router for handling manual navigation requests.
 router = APIRouter()
@@ -63,7 +64,7 @@ def manual_navigation(data: ManualInputNavigation):
     # Try parsing JSON 
     import json
     try:
-        parsed = json.loads(gpt_reply)
+        parsed = json.loads(extract_json(gpt_reply))
     except:
         return {"error": "Invalid LLM response", "raw": gpt_reply}
 

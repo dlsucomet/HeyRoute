@@ -18,7 +18,7 @@ import { customEvent, identifyDevice } from 'vexo-analytics';
 import DirectionsCard from "../components/directions-card";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
-import GoogleNavView from "../components/google-nav-view";
+import MapboxMapView from "../components/mapbox-map-view";
 import { useWakeWord } from "../hooks/useWakeWord";
 import supabase from '../supabase-client';
 import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
@@ -56,6 +56,7 @@ const HomeScreen = () => {
 
   const [autoTriggerNav, setAutoTriggerNav] = useState(false);
   const [fromHistoryNav, setFromHistoryNav] = useState(false);
+  const [micGranted, setMicGranted] = useState(false);
 
   // Control refs for passing auto-start triggers to the Modal
   const shouldAutoStartRecording = useRef(false);
@@ -103,27 +104,30 @@ const HomeScreen = () => {
   }, [userId, deviceId, sessionId]);
 
   /**
-   * Android specifically needs RECORD_AUDIO permission for both Wake Word (Porcupine) and ASR (Voice Assistant).
+   * Android specifically needs RECORD_AUDIO permission for both Wake Word (OpenWakeWord) and ASR (Voice Assistant).
    */
   useEffect(() => {
-    const checkMicPermission = async () => {
+    const checkPermissions = async () => {
       if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        if (!granted) {
-          await PermissionsAndroid.request(
+        const hasMic = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+        const hasLoc = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+        
+        if (!hasMic || !hasLoc) {
+          const statuses = await PermissionsAndroid.requestMultiple([
             PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            {
-              title: "Microphone Permission",
-              message: "HeyRoute needs microphone access for voice control.",
-              buttonPositive: "Allow"
-            }
-          );
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+          ]);
+          if (statuses[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED) {
+            setMicGranted(true);
+          }
+        } else {
+          setMicGranted(true);
         }
+      } else {
+        setMicGranted(true); // iOS permissions are handled natively by Info.plist
       }
     };
-    checkMicPermission();
+    checkPermissions();
   }, []);
 
   useEffect(() => {
@@ -163,7 +167,7 @@ const HomeScreen = () => {
   /**
    *Listens for "Hey Route". If detected, it sets a ref and opens the Voice Modal.
    */
-  const wakeWordVisible = isFocused && !isModalVisible;
+  const wakeWordVisible = isFocused && !isModalVisible && micGranted;
 
   useWakeWord({
     visible: wakeWordVisible,
@@ -348,7 +352,7 @@ const HomeScreen = () => {
     <SafeAreaView style={styles.container}>
       
       {/* Map Background */}
-      <GoogleNavView previewMode={true} />
+      <MapboxMapView previewMode={true} />
 
       <View style={styles.navContainer} pointerEvents="box-none">
         <NavBar userId={userId} />
@@ -385,7 +389,12 @@ const HomeScreen = () => {
           {wakeWordActive && (
             <View style={styles.wakeWordIndicator}>
               <View style={styles.listeningDot} />
-              <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+              <Pressable onLongPress={() => {
+                const { NativeModules } = require('react-native');
+                NativeModules.WakeWordModule.simulateWakeWord();
+              }}>
+                <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+              </Pressable>
             </View>
           )}
           <Pressable
@@ -399,6 +408,8 @@ const HomeScreen = () => {
           </Pressable>
         </View>
       )}
+
+
 
       <ActiveVoiceModal
         userId={userId}

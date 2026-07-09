@@ -290,7 +290,11 @@ class OpenRouteServiceAdapter(APIAdapter):
 
         if not place_name:
             return None
-        params = {"text": place_name, "apiKey": self.geoapify_api_key}
+        params = {
+            "text": place_name, 
+            "apiKey": self.geoapify_api_key,
+            "filter": "countrycode:ph"
+        }
 
         try:
             resp = await self.client.get(self.geocode_url, params=params)

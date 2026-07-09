@@ -19,9 +19,9 @@ export interface DirectionsCardProps {
 export interface ActiveVoiceModalProps {
   visible: boolean; // controls modal visibility
   onClose: () => void; // callback when modal is closed
-  onTranscriptionComplete: (text: string, metrics: any) => void; // receives the final transcription text when recording is stopped
-  onNavigationTriggered: (routeData: any) => void; // callback for when navigation data is received
-  onRoutePreview: (routeData: any) => void; // callback for when a route preview is received
+  onTranscriptionComplete?: (text: string, metrics: any) => void; // receives the final transcription text when recording is stopped
+  onNavigationTriggered?: (routeData: any) => void; // callback for when navigation data is received
+  onRoutePreview?: (routeData: any) => void; // callback for when a route preview is received
   userId: string | null;
   sessionId: string | undefined;
   autoStartVadMode?: React.MutableRefObject<boolean>;
@@ -29,4 +29,5 @@ export interface ActiveVoiceModalProps {
   onRecordingStateChange?: (val: boolean) => void;
   onProcessingStateChange?: (val: boolean) => void;
   onVadModeChange?: (val: boolean) => void;
+  onResponse?: (res: any) => void;
 }

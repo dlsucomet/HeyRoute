@@ -3,7 +3,7 @@ import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native"
 import { View, StyleSheet, Pressable, Text } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
-import GoogleNavView from "./google-nav-view";
+import MapboxNavigation from '@roberto497/react-native-mapbox-navigation';
 import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
 
@@ -14,7 +14,19 @@ const NavigationScreen = () => {
 
   // The backend passes the route details via route.params.
   // The most critical part for Nav SDK is destination.
-  const { destination, userId, sessionId } = route.params || {};
+  const { destination, full_geometry, userId, sessionId, routeData } = route.params || {};
+
+  // Extract destination coordinates properly.
+  // The 'destination' param is often a string address, so we extract from full_geometry.
+  let destCoords = [0, 0];
+  if (full_geometry && full_geometry.length > 0) {
+    const lastPoint = full_geometry[full_geometry.length - 1];
+    destCoords = [lastPoint[0], lastPoint[1]]; // [lng, lat]
+  } else if (Array.isArray(destination)) {
+    destCoords = [destination[0], destination[1]];
+  } else {
+    destCoords = [destination?.lng || destination?.longitude || 0, destination?.lat || destination?.latitude || 0];
+  }
 
   // --- VOICE & MODAL STATE ---
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -24,6 +36,7 @@ const NavigationScreen = () => {
   const [wakeWordActive, setWakeWordActive] = useState(false);
 
   const shouldAutoStartVadMode = useRef(false);
+
 
   // --- WAKE WORD HOOK ---
   useWakeWord({
@@ -48,10 +61,13 @@ const NavigationScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* 1. Full-screen Google Navigation View */}
-      <GoogleNavView 
-        destination={destination} 
-        onArrival={handleArrival} 
+      {/* 1. Full-screen Native Mapbox Navigation SDK */}
+      <MapboxNavigation
+        destination={destCoords}
+        exclude={routeData?.route?.exclude_string || routeData?.exclude_string}
+        showsEndOfRouteFeedback={true}
+        onArrive={handleArrival}
+        onCancelNavigation={() => navigation.navigate("Home")}
       />
 
       {/* 2. Floating Mic Button for Voice Commands */}
@@ -91,11 +107,11 @@ const NavigationScreen = () => {
         }}
         userId={userId}
         sessionId={sessionId}
-        autoStart={shouldAutoStartVadMode.current}
+        autoStartVadMode={shouldAutoStartVadMode}
         onRecordingStateChange={setIsRecordingInModal}
         onProcessingStateChange={setIsProcessingInModal}
         onVadModeChange={setVadModeActive}
-        onResponse={(res) => {
+        onResponse={(res: any) => {
           // If the AI wants to cancel navigation
           if (res?.intents?.cancellation) {
             navigation.navigate("Home");
@@ -115,7 +131,7 @@ const styles = StyleSheet.create({
   },
   stopButton: {
     position: "absolute",
-    top: 50,
+    top: 130, // move down below banner
     left: 20,
     backgroundColor: "white",
     padding: 10,

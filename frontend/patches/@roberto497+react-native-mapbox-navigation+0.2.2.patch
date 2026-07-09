@@ -1,0 +1,374 @@
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/build.gradle b/node_modules/@roberto497/react-native-mapbox-navigation/android/build.gradle
+index b6ceee1..16da151 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/android/build.gradle
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/build.gradle
+@@ -98,8 +98,8 @@ dependencies {
+   //noinspection GradleDynamicVersion
+   implementation "com.facebook.react:react-native:+"
+   //implementation "com.mapbox.navigation:android:2.13.1"
+-  implementation "com.mapbox.navigationcore:android:3.0.0-rc.5"
+-  implementation "com.mapbox.navigationcore:ui-components:3.0.0-rc.5"
++  implementation "com.mapbox.navigationcore:android:3.11.6"
++  implementation "com.mapbox.navigationcore:ui-components:3.11.6"
+ 
+   //implementation "com.mapbox.navigation:android:2.17.8"
+   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
+index 504168e..bab10e3 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationManager.kt
+@@ -59,4 +59,9 @@ class MapboxNavigationManager(var mCallerContext: ReactApplicationContext) : Sim
+     fun setShowsEndOfRouteFeedback(view: MapboxNavigationView, showsEndOfRouteFeedback: Boolean) {
+         view.setShowsEndOfRouteFeedback(showsEndOfRouteFeedback)
+     }
++
++    @ReactProp(name = "exclude")
++    fun setExclude(view: MapboxNavigationView, exclude: String?) {
++        view.setExclude(exclude)
++    }
+ }
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
+index 519c58c..a43df9d 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/MapboxNavigationView.kt
+@@ -54,6 +54,7 @@ import com.mapbox.navigation.tripdata.progress.model.EstimatedTimeToArrivalForma
+ import com.mapbox.navigation.tripdata.progress.model.PercentDistanceTraveledFormatter
+ import com.mapbox.navigation.tripdata.progress.model.TimeRemainingFormatter
+ import com.mapbox.navigation.tripdata.progress.model.TripProgressUpdateFormatter
++import com.mapbox.navigation.ui.maps.NavigationStyles
+ import com.mapbox.navigation.ui.maps.camera.NavigationCamera
+ import com.mapbox.navigation.ui.maps.camera.data.MapboxNavigationViewportDataSource
+ import com.mapbox.navigation.ui.maps.camera.lifecycle.NavigationBasicGesturesHandler
+@@ -62,6 +63,9 @@ import com.mapbox.navigation.ui.maps.camera.transition.NavigationCameraTransitio
+ import com.mapbox.navigation.ui.maps.location.NavigationLocationProvider
+ import com.mapbox.navigation.ui.maps.route.arrow.api.MapboxRouteArrowApi
+ import com.mapbox.navigation.ui.maps.route.arrow.api.MapboxRouteArrowView
++import com.mapbox.navigation.voice.api.MapboxSpeechApi
++import com.mapbox.navigation.voice.api.MapboxVoiceInstructionsPlayer
++import com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver
+ import com.mapbox.navigation.ui.maps.route.arrow.model.RouteArrowOptions
+ import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineApi
+ import com.mapbox.navigation.ui.maps.route.line.api.MapboxRouteLineView
+@@ -79,8 +83,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+     private var percentDistanceTraveledThreshold: Double = 95.0
+     private var distanceRemainingThresholdInMeters = 100
+     private var arrivalNotificationHasDisplayed = false
++    private var hasStartedNavigation = false
+ 
+     private var destination: Point? = null
++    private var exclude: String? = null
+     private var showsEndOfRouteFeedback = false
+ 
+     /**
+@@ -189,6 +195,33 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+      */
+     private val navigationLocationProvider = NavigationLocationProvider()
+ 
++    /**
++     * Voice APIs
++     */
++    private lateinit var speechApi: MapboxSpeechApi
++    private lateinit var voiceInstructionsPlayer: MapboxVoiceInstructionsPlayer
++
++    private val voiceInstructionsObserver = VoiceInstructionsObserver { voiceInstructions ->
++        speechApi.generate(voiceInstructions) { expected ->
++            expected.fold(
++                { error ->
++                    voiceInstructionsPlayer.play(
++                        error.fallback
++                    ) { value ->
++                        speechApi.clean(value)
++                    }
++                },
++                { value ->
++                    voiceInstructionsPlayer.play(
++                        value.announcement
++                    ) { value ->
++                        speechApi.clean(value)
++                    }
++                }
++            )
++        }
++    }
++
+     /**
+      * Gets notified with location updates.
+      *
+@@ -223,6 +256,11 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                 )
+             }
+ 
++            if (!hasStartedNavigation && destination != null) {
++                val origin = Point.fromLngLat(enhancedLocation.longitude, enhancedLocation.latitude)
++                findRoute(origin, destination!!)
++            }
++
+             val event = Arguments.createMap()
+             event.putDouble("longitude", enhancedLocation.longitude)
+             event.putDouble("latitude", enhancedLocation.latitude)
+@@ -245,6 +283,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         if (style != null) {
+             val maneuverArrowResult = routeArrowApi.addUpcomingManeuverArrow(routeProgress)
+             routeArrowView.renderManeuverUpdate(style, maneuverArrowResult)
++
++            routeLineApi.updateWithRouteProgress(routeProgress) { result ->
++                routeLineView.renderRouteLineUpdate(style, result)
++            }
+         }
+ 
+         // update top banner with maneuver instructions
+@@ -298,6 +340,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+      */
+     private val routesObserver = RoutesObserver { routeUpdateResult ->
+         if (routeUpdateResult.navigationRoutes.isNotEmpty()) {
++            Log.d("MapboxNavigationView", "RoutesObserver: routes isNotEmpty. Rendering route line.")
+             // generate route geometries asynchronously and render them
+             routeLineApi.setNavigationRoutes(
+                 routeUpdateResult.navigationRoutes
+@@ -311,6 +354,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+             viewportDataSource.onRouteChanged(routeUpdateResult.navigationRoutes.first())
+             viewportDataSource.evaluate()
+         } else {
++            Log.d("MapboxNavigationView", "RoutesObserver: routes isEmpty. Clearing route line.")
+             // remove the route line and route arrow from the map
+             val style = binding.mapView.mapboxMap.style
+             if (style != null) {
+@@ -339,6 +383,11 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         post(measureAndLayout)
+     }
+ 
++    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
++        super.onSizeChanged(w, h, oldw, oldh)
++        post(measureAndLayout)
++    }
++
+     private val measureAndLayout = Runnable {
+         measure(
+             MeasureSpec.makeMeasureSpec(width, MeasureSpec.EXACTLY),
+@@ -425,6 +474,16 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+             MapboxDistanceFormatter(distanceFormatterOptions)
+         )
+ 
++        // initialize voice
++        speechApi = MapboxSpeechApi(
++            context,
++            "en-US"
++        )
++        voiceInstructionsPlayer = MapboxVoiceInstructionsPlayer(
++            context,
++            "en-US"
++        )
++
+         // initialize bottom progress view
+         tripProgressApi = MapboxTripProgressApi(
+             TripProgressUpdateFormatter.Builder(context)
+@@ -443,11 +502,6 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                 .build()
+         )
+ 
+-        // load map style
+-        binding.mapView.scalebar.enabled = false
+-        binding.mapView.compass.enabled = false
+-        binding.mapView.mapboxMap.loadStyle(Style.MAPBOX_STREETS)
+-
+         // configure Route line options
+         val mapboxRouteLineApiOptions = MapboxRouteLineApiOptions.Builder().build()
+         val mapboxRouteLineViewOptions = MapboxRouteLineViewOptions.Builder(context)
+@@ -459,6 +513,13 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         routeLineView = MapboxRouteLineView(mapboxRouteLineViewOptions)
+         routeArrowView = MapboxRouteArrowView(mapboxRouteArrowOptions)
+ 
++        // load map style
++        binding.mapView.scalebar.enabled = false
++        binding.mapView.compass.enabled = false
++        binding.mapView.mapboxMap.loadStyle(Style.MAPBOX_STREETS) { style ->
++            routeLineView.initializeLayers(style)
++        }
++
+         // initialize view interactions
+         binding.stop.setOnClickListener {
+             clearRouteAndStopNavigation()
+@@ -481,17 +542,14 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                 .getJSModule(RCTEventEmitter::class.java)
+                 .receiveEvent(id, "onChat", event)
+         }
+-        binding.startNavigation.text = "Iniciar navegação";
+-        binding.startNavigation.setOnClickListener {
+-            binding.startNavigation.visibility = View.GONE
+-            this.destination?.let { it ->  findRoute(it) }
+-        }
++        binding.startNavigation.text = "Start Navigation";
++
+ 
+         // initialize observers
+         registerEvents()
+ 
+         mapboxNavigation.startTripSession(true)
+-        binding.startNavigation.visibility = View.VISIBLE;
++        binding.startNavigation.visibility = View.GONE;
+     }
+ 
+     private fun initLocationBuilder(): LocationOptions.Builder {
+@@ -528,6 +586,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         mapboxNavigation.registerRoutesObserver(routesObserver)
+         mapboxNavigation.registerLocationObserver(locationObserver)
+         mapboxNavigation.registerRouteProgressObserver(routeProgressObserver)
++        mapboxNavigation.registerVoiceInstructionsObserver(voiceInstructionsObserver)
+     }
+ 
+     override fun onDetachedFromWindow() {
+@@ -535,35 +594,41 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         mapboxNavigation.unregisterRoutesObserver(routesObserver)
+         mapboxNavigation.unregisterLocationObserver(locationObserver)
+         mapboxNavigation.unregisterRouteProgressObserver(routeProgressObserver)
++        mapboxNavigation.unregisterVoiceInstructionsObserver(voiceInstructionsObserver)
+     }
+ 
+     private fun onDestroy() {
+         MapboxNavigationProvider.destroy()
+         routeLineApi.cancel()
+         routeLineView.cancel()
++        speechApi.cancel()
++        voiceInstructionsPlayer.shutdown()
+     }
+ 
+-    private fun findRoute(destination: Point) {
+-        val originLocation = navigationLocationProvider.lastLocation
+-        val originPoint = originLocation?.let {
+-            Point.fromLngLat(it.longitude, it.latitude)
+-        } ?: return
++    private fun findRoute(originPoint: Point, destination: Point) {
++        hasStartedNavigation = true
+ 
+         try {
++            val routeOptionsBuilder = RouteOptions.builder()
++                .applyDefaultNavigationOptions()
++                .applyLanguageAndVoiceUnitOptions(context)
++                .coordinatesList(listOf(originPoint, destination))
++                .profile(DirectionsCriteria.PROFILE_DRIVING)
++                .steps(true)
++                .language("en")
++
++            if (!exclude.isNullOrEmpty()) {
++                routeOptionsBuilder.exclude(exclude)
++            }
++
+             mapboxNavigation.requestRoutes(
+-                RouteOptions.builder()
+-                    .applyDefaultNavigationOptions()
+-                    .applyLanguageAndVoiceUnitOptions(context)
+-                    .coordinatesList(listOf(originPoint, destination))
+-                    .profile(DirectionsCriteria.PROFILE_DRIVING)
+-                    .steps(true)
+-                    .language("pt-BR")
+-                    .build(),
++                routeOptionsBuilder.build(),
+                 object : NavigationRouterCallback {
+                     override fun onRoutesReady(
+                         routes: List<NavigationRoute>,
+                         routerOrigin: String
+                     ) {
++                        Log.d("MapboxNavigationView", "findRoute onRoutesReady: success, calling setRouteAndStartNavigation")
+                         setRouteAndStartNavigation(routes)
+                     }
+ 
+@@ -571,11 +636,14 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+                         reasons: List<RouterFailure>,
+                         routeOptions: RouteOptions
+                     ) {
++                        hasStartedNavigation = false
++                        Log.e("MapboxNavigationView", "findRoute onFailure: $reasons")
+                         sendErrorToReact("Error finding route $reasons")
+                     }
+ 
+                     override fun onCanceled(routeOptions: RouteOptions, routerOrigin: String) {
+-                        // no impl
++                        hasStartedNavigation = false
++                        Log.e("MapboxNavigationView", "findRoute onCanceled")
+                     }
+                 }
+             )
+@@ -586,6 +654,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+     }
+ 
+     private fun setRouteAndStartNavigation(routes: List<NavigationRoute>) {
++        Log.d("MapboxNavigationView", "setRouteAndStartNavigation called with ${routes.size} routes")
+         // set routes, where the first route in the list is the primary route that
+         // will be used for active guidance
+         mapboxNavigation.setNavigationRoutes(routes)
+@@ -611,6 +680,7 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         mapboxNavigation.setNavigationRoutes(listOf())
+ 
+         arrivalNotificationHasDisplayed = false
++        hasStartedNavigation = false
+ 
+         // hide UI elements
+         binding.maneuverView.visibility = View.INVISIBLE
+@@ -626,6 +696,10 @@ class MapboxNavigationView(private val context: ThemedReactContext) :
+         this.destination = destination
+     }
+ 
++    fun setExclude(exclude: String?) {
++        this.exclude = exclude
++    }
++
+     fun setShowsEndOfRouteFeedback(showsEndOfRouteFeedback: Boolean) {
+         this.showsEndOfRouteFeedback = showsEndOfRouteFeedback
+     }
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/VoiceTest.kt b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/VoiceTest.kt
+new file mode 100644
+index 0000000..ca57bcc
+--- /dev/null
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/android/src/main/java/com/mapboxnavigation/VoiceTest.kt
+@@ -0,0 +1,41 @@
++package com.mapboxnavigation
++
++import android.content.Context
++import com.mapbox.navigation.voice.api.MapboxSpeechApi
++import com.mapbox.navigation.voice.api.MapboxVoiceInstructionsPlayer
++import com.mapbox.navigation.core.trip.session.VoiceInstructionsObserver
++import com.mapbox.bindgen.Expected
++import com.mapbox.navigation.voice.model.SpeechError
++import com.mapbox.navigation.voice.model.SpeechValue
++import com.mapbox.navigation.voice.model.SpeechAnnouncement
++
++class VoiceTest {
++    lateinit var speechApi: MapboxSpeechApi
++    lateinit var voiceInstructionsPlayer: MapboxVoiceInstructionsPlayer
++
++    fun init(context: Context) {
++        speechApi = MapboxSpeechApi(context, "en-US")
++        voiceInstructionsPlayer = MapboxVoiceInstructionsPlayer(context, "en-US")
++        
++        val voiceInstructionsObserver = VoiceInstructionsObserver { voiceInstructions ->
++            speechApi.generate(voiceInstructions) { expected ->
++                expected.fold(
++                    { error ->
++                        voiceInstructionsPlayer.play(
++                            error.fallback
++                        ) { value ->
++                            speechApi.clean(value)
++                        }
++                    },
++                    { value ->
++                        voiceInstructionsPlayer.play(
++                            value.announcement
++                        ) { value ->
++                            speechApi.clean(value)
++                        }
++                    }
++                )
++            }
++        }
++    }
++}
+diff --git a/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts b/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
+index 566ba96..0b6042c 100644
+--- a/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
++++ b/node_modules/@roberto497/react-native-mapbox-navigation/src/typings.ts
+@@ -32,4 +32,5 @@ export interface IMapboxNavigationProps {
+   onChat?: () => void;
+   showsEndOfRouteFeedback?: boolean;
+   hideStatusView?: boolean;
++  exclude?: string;
+ }

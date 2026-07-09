@@ -12,11 +12,12 @@ import { useState, useEffect, useRef } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import { Sound } from "react-native-nitro-sound";
 import RNFS from "react-native-fs";
-import { Buffer } from "buffer";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { customEvent } from 'vexo-analytics';
+import Geolocation from "react-native-geolocation-service";
 import { ASR_URL } from "@env";
 import { ActiveVoiceModalProps } from "../types/navigation";
+import { speakTTS } from "../utils/tts";
 
 const ASR_ANDROID_URL = ASR_URL;
 
@@ -24,7 +25,7 @@ const ASR_ANDROID_URL = ASR_URL;
 const RECORD_PATH = `${RNFS.CachesDirectoryPath}/user_voice.wav`;
 
 export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
-  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview } = props;
+  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse } = props;
 
   useEffect(() => {
     console.log("[ASR] Hook received identity props:", { userId, sessionId });
@@ -105,6 +106,60 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
         return;
       }
 
+      // Helper to fetch current location with 2s timeout
+      const getCurrentPositionWithTimeout = (): Promise<{ latitude: number; longitude: number } | null> => {
+        let timeoutId: any;
+        const geoPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+          Geolocation.getCurrentPosition(
+            (position) => {
+              if (timeoutId) clearTimeout(timeoutId);
+              resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+            },
+            (error) => {
+              console.warn("[useVoiceAssistant] High accuracy location failed, trying low accuracy:", error.code, error.message);
+              Geolocation.getCurrentPosition(
+                (pos) => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+                },
+                (err2) => {
+                  if (timeoutId) clearTimeout(timeoutId);
+                  console.error("[useVoiceAssistant] Low accuracy location failed:", err2.code, err2.message);
+                  resolve(null);
+                },
+                { enableHighAccuracy: false, timeout: 2000, maximumAge: 10000 }
+              );
+            },
+            { enableHighAccuracy: true, timeout: 2000, maximumAge: 10000 }
+          );
+        });
+
+        const timeoutPromise = new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+          timeoutId = setTimeout(() => {
+            console.warn("[useVoiceAssistant] Geolocation JS-level timeout reached (2 seconds). Resolving null.");
+            resolve(null);
+          }, 2000);
+        });
+
+        return Promise.race([geoPromise, timeoutPromise]);
+      };
+
+      // Fetch location
+      let lat: number | null = null;
+      let lng: number | null = null;
+      try {
+        const pos = await getCurrentPositionWithTimeout();
+        if (pos) {
+          lat = pos.latitude;
+          lng = pos.longitude;
+          console.log(`[ASR] Captured device GPS: lat=${lat}, lng=${lng}`);
+        } else {
+          console.warn("[ASR] Could not capture device GPS (timeout or failed).");
+        }
+      } catch (err) {
+        console.error("[ASR] Failed to fetch current location", err);
+      }
+
       // Prepare Multipart form data for the ASR server
       const formData = new FormData();
       formData.append('file', {
@@ -127,6 +182,8 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
           'X-User-ID': userId ?? "",
           'X-Session-ID': sessionId ?? "",
           'X-Connection-Type': type ?? 'unknown',
+          ...(lat !== null ? { 'X-Current-Lat': lat.toString() } : {}),
+          ...(lng !== null ? { 'X-Current-Lng': lng.toString() } : {}),
         } as any,
       });
 
@@ -214,7 +271,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     const enhanced = data?.transcription_enhanced || data?.transcription_raw || "";
     const heyrouteData = data?.data;
     const responseText = data?.heyroute_response || "";
-    const isErrorResponse = data?.data?.error === true;
+    const isErrorResponse = !!data?.data?.error;
     
     // Update conversation history for LLM context
     if (enhanced) conversationHistory.current.push({ role: "user", content: enhanced });
@@ -227,11 +284,12 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
     setResult(enhanced || "Thinking...");
     if (onTranscriptionComplete) onTranscriptionComplete(enhanced, data?.metrics);
+    if (onResponse) onResponse(data);
 
     // Navigation Trigger
     if (heyrouteData?.navigation_started || heyrouteData?.navigation_started === false) {
       await endConversation();
-      onNavigationTriggered(heyrouteData);
+      onNavigationTriggered?.(heyrouteData);
       return;
     }
 
@@ -262,14 +320,20 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       heyrouteData.speech_delay = estimatedSpeechTime;
 
       // Trigger the navigation
-      onRoutePreview(heyrouteData);
+      onRoutePreview?.(heyrouteData);
       return;
     }
 
     // TTS Logic
     if (responseText) {
       try {
-        await playTTS(responseText);
+        playTTS(responseText);
+        
+        // Calculate estimated speech time (~300ms per word + 1 second buffer)
+        const fallbackSpeechTime = (responseText.split(" ").length * 300) + 1000;
+        
+        // Wait for the TTS to finish before opening the mic, otherwise the OS mutes the player
+        await new Promise(resolve => setTimeout(resolve, fallbackSpeechTime));
       } catch (ttsErr) {
         await endConversation();
         return;
@@ -289,20 +353,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Fetches MP3 audio from TTS engine and plays it immediately.
    */
   const playTTS = async (text: string) => {
-    const res = await fetch(`${ASR_ANDROID_URL}/speak`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-    });
-
-    if (!res.ok) throw new Error("TTS Server Error");
-
-    const arrayBuffer = await res.arrayBuffer();
-    const path = `${RNFS.CachesDirectoryPath}/tts.mp3`;
-
-    // Save buffer to file then play
-    await RNFS.writeFile(path, Buffer.from(arrayBuffer).toString("base64"), "base64");
-    await Sound.startPlayer(path);
+    await speakTTS(text);
   };
 
   /**

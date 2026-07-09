@@ -11,7 +11,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, AppState, PermissionsAndroid, Platform } from 'react-native';
 import { NavigationContainer as ReactNavigationContainer } from '@react-navigation/native';
-import { NavigationProvider } from '@googlemaps/react-native-navigation-sdk';
+
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { startNewSessionIfNeeded, endSession, updateActivity } from './src/utils/session';
 import { vexo } from 'vexo-analytics';
@@ -114,12 +114,7 @@ export default function App() {
   }
 
   return (
-    <NavigationProvider
-      termsAndConditionsDialogOptions={{
-        title: 'HeyRoute Navigation',
-        companyName: 'HeyRoute',
-      }}
-    >
+
       <ReactNavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {/* render screens based on session state */}
@@ -148,6 +143,6 @@ export default function App() {
           )}
         </Stack.Navigator>
       </ReactNavigationContainer>
-    </NavigationProvider>
+
   );
 }
