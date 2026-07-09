@@ -34,6 +34,7 @@ const NavigationScreen = () => {
   const [isProcessingInModal, setIsProcessingInModal] = useState(false);
   const [vadModeActive, setVadModeActive] = useState(false);
   const [wakeWordActive, setWakeWordActive] = useState(false);
+  const [excludeString, setExcludeString] = useState<string | undefined>(routeData?.route?.exclude_string || routeData?.exclude_string);
 
   const shouldAutoStartVadMode = useRef(false);
 
@@ -64,7 +65,7 @@ const NavigationScreen = () => {
       {/* 1. Full-screen Native Mapbox Navigation SDK */}
       <MapboxNavigation
         destination={destCoords}
-        exclude={routeData?.route?.exclude_string || routeData?.exclude_string}
+        exclude={excludeString}
         showsEndOfRouteFeedback={true}
         onArrive={handleArrival}
         onCancelNavigation={() => navigation.navigate("Home")}
@@ -118,6 +119,10 @@ const NavigationScreen = () => {
           }
           // The Navigation SDK handles rerouting natively, 
           // but we can still listen for trip_changes here if needed.
+          const newExclude = res?.data?.route?.exclude_string || res?.data?.exclude_string;
+          if (newExclude) {
+            setExcludeString(newExclude);
+          }
         }}
       />
     </View>

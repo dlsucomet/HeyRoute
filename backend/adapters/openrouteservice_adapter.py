@@ -53,7 +53,7 @@ async def get_road_polygon(client, road_name: str):
     # Fetch the target road geometry
     road_query = f"""
     [out:json][timeout:25];
-    way["highway"]["name"="{road_name}"]({bbox});
+    way["highway"]["name"~"^{road_name}$", i]({bbox});
     (._;>;);
     out tags geom;
     """
@@ -61,7 +61,7 @@ async def get_road_polygon(client, road_name: str):
     # Fetch nearby roads for intersections and layer filtering
     nearby_query = f"""
     [out:json][timeout:25];
-    way["highway"]["name"="{road_name}"]({bbox})->.targetRoad;
+    way["highway"]["name"~"^{road_name}$", i]({bbox})->.targetRoad;
     way["highway"](around.targetRoad:30)({bbox})["name"];
     (._;>;);
     out tags geom;
@@ -69,9 +69,10 @@ async def get_road_polygon(client, road_name: str):
 
     try:
         # Execute API requests
+        headers = {"User-Agent": "HeyRoute/1.0"}
         road_resp, nearby_resp = await asyncio.gather(
-            client.get(OVERPASS_URL, params={"data": road_query}, timeout=30.0),
-            client.get(OVERPASS_URL, params={"data": nearby_query}, timeout=30.0)
+            client.get(OVERPASS_URL, params={"data": road_query}, headers=headers, timeout=30.0),
+            client.get(OVERPASS_URL, params={"data": nearby_query}, headers=headers, timeout=30.0)
         )
         road_resp.raise_for_status()
         nearby_resp.raise_for_status()
@@ -82,8 +83,10 @@ async def get_road_polygon(client, road_name: str):
             print("Error: The query took too long (Gateway Timeout). Simplify your query.")
         else:
             print(f"HTTP Error {e.response.status_code}: {e.response.text}")
+        return None
     except httpx.ConnectError:
         print("Error: Could not connect to the Overpass server. Check your internet or URL.")
+        return None
     except Exception as e:
         print(f"An unexpected error occurred: {type(e).__name__} - {str(e)}")
         return None
