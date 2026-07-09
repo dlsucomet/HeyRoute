@@ -3,6 +3,7 @@ This module implements the database interaction logic for HeyRoute.
 """
 
 import os
+import asyncio
 from supabase import create_client
 from shapely import MultiPolygon, wkb
 from datetime import datetime, timezone
@@ -37,11 +38,13 @@ async def store_audio_file(file_path: str, file_content: bytes):
     try:
         normalized_file_path = file_path.replace("\\", "/")
         # We specify the content_type so the browser knows it's audio later
-        response = supabase.storage.from_("voice_logs").upload(
-            path=normalized_file_path,
-            file=file_content,
-            file_options={"content-type": "audio/wav", "upsert": "true"}
-        )
+        def _upload():
+            return supabase.storage.from_("voice_logs").upload(
+                path=normalized_file_path,
+                file=file_content,
+                file_options={"content-type": "audio/wav", "upsert": "true"}
+            )
+        response = await asyncio.to_thread(_upload)
         return response
     except Exception as e:
         print(f"Storage Upload Error: {e}")
@@ -56,18 +59,20 @@ async def store_interactions(user_id: str, session_id: str, audio_file_path: str
     """
 
     try:
-        supabase.table("interaction_logs").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "audio_file_path": audio_file_path,
-            "raw_input": raw_input,
-            "enhanced_input": enhanced_input,
-            "response": response,
-            "conversation_history": conversation_history,
-            "turn_number": turn_number,
-            "intents": intents,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("interaction_logs").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "audio_file_path": audio_file_path,
+                "raw_input": raw_input,
+                "enhanced_input": enhanced_input,
+                "response": response,
+                "conversation_history": conversation_history,
+                "turn_number": turn_number,
+                "intents": intents,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print(f"Database Insert Error: {e}")
 
@@ -80,20 +85,22 @@ async def store_metrics(user_id: str, session_id: str,
     """
 
     try:
-        supabase.table("performance_logs").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "save_ms": int(save_ms),
-            "asr_ms": int(asr_ms),
-            "cleaning_ms": int(cleaning_ms),
-            "gpt_ms": int(gpt_ms),
-            "ors_ms": int(ors_ms),
-            "intent_detect_ms": int(intent_detect_ms),
-            "final_json_ms": int(final_json_ms),
-            "network_overhead_ms": int(network_overhead_ms),
-            "total_turnaround_ms": int(total_turnaround_ms),
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("performance_logs").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "save_ms": int(save_ms),
+                "asr_ms": int(asr_ms),
+                "cleaning_ms": int(cleaning_ms),
+                "gpt_ms": int(gpt_ms),
+                "ors_ms": int(ors_ms),
+                "intent_detect_ms": int(intent_detect_ms),
+                "final_json_ms": int(final_json_ms),
+                "network_overhead_ms": int(network_overhead_ms),
+                "total_turnaround_ms": int(total_turnaround_ms),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print(f"Error storing metrics: {e}")
 
@@ -105,12 +112,14 @@ async def log_final_json(user_id: str, session_id: str, payload: Dict[str, Any])
     """
 
     try:
-        supabase.table("final_json_logs").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "json_payload": payload,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("final_json_logs").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "json_payload": payload,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print("Final JSON logging failed:", e)
 
@@ -122,14 +131,16 @@ async def log_preference(user_id: str, session_id: str, preference_type: str, pr
     """
     
     try:
-        supabase.table("preference_logs").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "preference_type": preference_type,
-            "preference_value": preference_value,
-            "is_accepted": is_accepted,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("preference_logs").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "preference_type": preference_type,
+                "preference_value": preference_value,
+                "is_accepted": is_accepted,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print("Preference logging failed:", e)
 
@@ -142,18 +153,20 @@ async def log_route_details(user_id: str, session_id: str, event_type: str, orig
     """
     
     try:
-        supabase.table("route_logs").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "event_type": event_type,
-            "origin": origin,
-            "destination": destination,
-            "route_option": option,
-            "via_road": via,
-            "distance": distance,
-            "duration": duration,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("route_logs").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "event_type": event_type,
+                "origin": origin,
+                "destination": destination,
+                "route_option": option,
+                "via_road": via,
+                "distance": distance,
+                "duration": duration,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print("Route logging failed:", e)
 
@@ -165,13 +178,15 @@ async def log_session_metadata(user_id: str, session_id: str, device: str, netwo
     """
 
     try:
-        supabase.table("session_metadata").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "device_model": device,
-            "connection_type": network,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("session_metadata").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "device_model": device,
+                "connection_type": network,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print(f"Metadata logging failed: {e}")
 
@@ -184,14 +199,16 @@ async def log_event(*, user_id: str, session_id: str, event_type: str, response:
     """
 
     try:
-        supabase.table("user_events").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "event_type": event_type,
-            "response": response,
-            "turn_number": turn_number,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("user_events").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "event_type": event_type,
+                "response": response,
+                "turn_number": turn_number,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         # Logging should NEVER break navigation
         print("Event logging failed:", e)
@@ -204,15 +221,17 @@ async def log_system_error(user_id: str, session_id: str, function_name: str, er
     """
 
     try:
-        supabase.table("system_errors").insert({
-            "user_id": user_id,
-            "session_id": session_id,
-            "function_name": function_name,
-            "error_message": error_msg,
-            "error_type": error_type,
-            "error_payload": payload or {},
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }).execute()
+        def _task():
+            return supabase.table("system_errors").insert({
+                "user_id": user_id,
+                "session_id": session_id,
+                "function_name": function_name,
+                "error_message": error_msg,
+                "error_type": error_type,
+                "error_payload": payload or {},
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print(f"CRITICAL: Logging failed: {e}")
 
@@ -225,13 +244,15 @@ async def load_polygons(road_name):
         None if no polygons found for the road_name.
     """
 
-    response = (
-        supabase
-        .table("avoid_road_polygons")
-        .select("geometry")
-        .eq("road_name", road_name.lower())
-        .execute()
-    )
+    def _task():
+        return (
+            supabase
+            .table("avoid_road_polygons")
+            .select("geometry")
+            .eq("road_name", road_name.lower())
+            .execute()
+        )
+    response = await asyncio.to_thread(_task)
 
     if not response.data:
         return None
@@ -255,7 +276,9 @@ async def store_polygons(road_name, multi_poly):
         "road_name": road_name.lower(), # Normalize for the case-insensitive constraint
         "geometry": wkb.dumps(multi_poly, hex=True)
     }
-    supabase.table("avoid_road_polygons").upsert(row).execute()
+    def _task():
+        return supabase.table("avoid_road_polygons").upsert(row).execute()
+    await asyncio.to_thread(_task)
 
 async def load_saved_places(user_id: str):
     """
@@ -266,13 +289,15 @@ async def load_saved_places(user_id: str):
     """
 
     try:
-        response = (
-            supabase
-            .table("places")
-            .select("label, latitude, longitude")
-            .eq("user_id", user_id)
-            .execute()
-        )
+        def _task():
+            return (
+                supabase
+                .table("places")
+                .select("label, latitude, longitude")
+                .eq("user_id", user_id)
+                .execute()
+            )
+        response = await asyncio.to_thread(_task)
         # Store as a dict for O(1) lookup: {"home": {"lat": 1.1, "lng": 2.2}}
         return {
             row["label"].lower(): {"lat": row["latitude"], "lng": row["longitude"]} 
@@ -291,12 +316,14 @@ async def store_place(user_id: str, label: str, latitude: float, longitude: floa
         "home" -> coordinates of user's home
     """
 
-    supabase.table("places").upsert({
-        "user_id": user_id,
-        "label": label.lower(),
-        "latitude": latitude,
-        "longitude": longitude
-    }).execute()
+    def _task():
+        return supabase.table("places").upsert({
+            "user_id": user_id,
+            "label": label.lower(),
+            "latitude": latitude,
+            "longitude": longitude
+        }).execute()
+    await asyncio.to_thread(_task)
 
 async def load_most_used_item(
     table_name: str,
@@ -313,14 +340,16 @@ async def load_most_used_item(
         None if no data, below threshold, or tie.
     """
 
-    response = (
-        supabase
-        .table(table_name)
-        .select(f"{select_field}, usage_count")
-        .eq("user_id", user_id)
-        .eq("destination_label", destination_label.lower())
-        .execute()
-    )
+    def _task():
+        return (
+            supabase
+            .table(table_name)
+            .select(f"{select_field}, usage_count")
+            .eq("user_id", user_id)
+            .eq("destination_label", destination_label.lower())
+            .execute()
+        )
+    response = await asyncio.to_thread(_task)
 
     rows = response.data or []
     if not rows:
@@ -352,34 +381,40 @@ async def increment_usage(
 
     destination_label = destination_label.lower()
 
-    existing = (
-        supabase
-        .table(table_name)
-        .select("usage_count")
-        .eq("user_id", user_id)
-        .eq("destination_label", destination_label)
-        .eq(key_field, key_value)
-        .execute()
-    )
+    def _task():
+        return (
+            supabase
+            .table(table_name)
+            .select("usage_count")
+            .eq("user_id", user_id)
+            .eq("destination_label", destination_label)
+            .eq(key_field, key_value)
+            .execute()
+        )
+    existing = await asyncio.to_thread(_task)
 
     if existing.data:
         new_count = existing.data[0]["usage_count"] + 1
 
-        supabase.table(table_name).update({
-            "usage_count": new_count,
-            "last_used": "now()"
-        }) \
-        .eq("user_id", user_id) \
-        .eq("destination_label", destination_label) \
-        .eq(key_field, key_value) \
-        .execute()
+        def _task():
+            return supabase.table(table_name).update({
+                "usage_count": new_count,
+                "last_used": "now()"
+            }) \
+            .eq("user_id", user_id) \
+            .eq("destination_label", destination_label) \
+            .eq(key_field, key_value) \
+            .execute()
+        await asyncio.to_thread(_task)
     else:
-        supabase.table(table_name).insert({
-            "user_id": user_id,
-            "destination_label": destination_label,
-            key_field: key_value,
-            "usage_count": 1
-        }).execute()
+        def _task():
+            return supabase.table(table_name).insert({
+                "user_id": user_id,
+                "destination_label": destination_label,
+                key_field: key_value,
+                "usage_count": 1
+            }).execute()
+        await asyncio.to_thread(_task)
 
 async def load_most_used_road(user_id: str, destination_label: str):
     """
@@ -490,7 +525,9 @@ async def store_trip(
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
-        supabase.table("trip_history").insert(row).execute()
+        def _task():
+            return supabase.table("trip_history").insert(row).execute()
+        await asyncio.to_thread(_task)
     except Exception as e:
         print(f"Error storing trip: {e}")
 
@@ -499,15 +536,17 @@ async def load_trip_history(user_id: str, limit: int = 10):
     Retrieves the most recent trips for a specific user.
     """
     try:
-        response = (
-            supabase
-            .table("trip_history")
-            .select("*")
-            .eq("user_id", user_id)
-            .order("created_at", descending=True)
-            .limit(limit)
-            .execute()
-        )
+        def _task():
+            return (
+                supabase
+                .table("trip_history")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", descending=True)
+                .limit(limit)
+                .execute()
+            )
+        response = await asyncio.to_thread(_task)
         return response.data
     except Exception as e:
         print(f"Error loading trips: {e}")
