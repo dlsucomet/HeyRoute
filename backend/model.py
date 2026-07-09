@@ -373,11 +373,13 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 if not origin_coords or not destination_coords:
                     response  = "I couldn't find your destination. Could you be more specific?"
                     state.conversation_history.append({"role": "assistant", "content": response})
-                    await log_system_error(
-                        user_id, session_id, "geocoding_zero_results", 
-                        "Geocoder returned null for origin or destination",
-                        type(e).__name__,
-                        {"gpt_json": state.final_gpt_response}
+                    asyncio.create_task(
+                        log_system_error(
+                            user_id, session_id, "geocoding_zero_results", 
+                            "Geocoder returned null for origin or destination",
+                            "GeocodeError",
+                            {"gpt_json": state.final_gpt_response}
+                        )
                     )
                     return {"heyroute": response, "history": state.conversation_history, "turn_number": current_turn, "intents": intents, "intent_detect_latency": intent_detect_latency, "final_json_latency": final_json_latency, "user_id": user_id, "session_id": session_id}
 
