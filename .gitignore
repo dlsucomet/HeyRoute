@@ -37,6 +37,45 @@ frontend/ios/DerivedData/
 .vscode/
 .idea/
 
+# React Native / Expo
+.expo/
+npm-debug.log*
+
+# Dependencies
+node_modules/
+venv/
+frontend/ios/Pods/
+
+# Python
+venv/
+
+# Environment files
+frontend/.env
+backend/.env
+
+# Android / React Native
+frontend/android/.gradle/
+frontend/android/app/.cxx/
+frontend/android/app/build/
+frontend/android/build/
+
+# Android local config
+frontend/android/local.properties
+frontend/android/app/debug.keystore
+frontend/android/app/release.keystore
+
+# iOS specific
+frontend/ios/build/
+frontend/ios/Pods/
+frontend/ios/DerivedData/
+**/xcuserdata/
+**/xcshareddata/
+
+# OS
+.DS_Store
+.vscode/
+.idea/
+
 # Python bytecode
 **/__pycache__/
 *.py[cod]
@@ -45,4 +84,6 @@ frontend/ios/DerivedData/
 
 # Testing & Cache (Backend)
 backend/test_*.py
-backend/road_points_cache.json
+backend/debug_*.py
+backend/debug_*.txt
+backend/check_*.py

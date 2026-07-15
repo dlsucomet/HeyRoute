@@ -91,29 +91,67 @@ class MapboxDirectionsAdapter(APIAdapter):
             resp = await self.client.post(OVERPASS_URL, data={"data": query}, headers=headers, timeout=30.0)
             resp.raise_for_status()
             data = resp.json()
-            coords = []
+            
+            # Use shapely to merge unordered ways into a continuous line
+            from shapely.geometry import LineString
+            from shapely.ops import linemerge
+            
+            lines = []
             for elem in data.get("elements", []):
                 if elem["type"] == "way" and "geometry" in elem:
                     way_coords = [[pt["lon"], pt["lat"]] for pt in elem["geometry"]]
-                    coords.extend(way_coords)
-            return coords
+                    if len(way_coords) >= 2:
+                        lines.append(LineString(way_coords))
+            
+            if not lines:
+                return []
+                
+            merged = linemerge(lines)
+            return self._sample_points_from_geom(merged, 50)
+            
         except Exception as e:
             print(f"[Mapbox Adapter] Error fetching centerline for {road_name}: {e}")
             return None
+
+    def _sample_points_from_geom(self, geom, num_points: int) -> List[List[float]]:
+        """Samples evenly spaced points along a LineString or MultiLineString."""
+        from shapely.geometry import LineString, MultiLineString
+        
+        if isinstance(geom, LineString):
+            if geom.length == 0:
+                return []
+            distances = [i * (geom.length / max(1, num_points - 1)) for i in range(num_points)]
+            points = [geom.interpolate(d) for d in distances]
+            return [[p.x, p.y] for p in points]
+            
+        elif isinstance(geom, MultiLineString):
+            total_length = geom.length
+            if total_length == 0:
+                return []
+            coords = []
+            for line in geom.geoms:
+                # Distribute points proportionally among segments
+                segment_points = max(2, int(round((line.length / total_length) * num_points)))
+                dists = [i * (line.length / max(1, segment_points - 1)) for i in range(segment_points)]
+                coords.extend([[p.x, p.y] for p in [line.interpolate(d) for d in dists]])
+            return coords
+            
+        return []
 
     # ---------- Helper for Road Avoidance ----------
     async def _get_exclusion_points(self, avoid_roads: List[str]) -> List[str]:
         """
         Takes a list of road names to avoid.
-        Loads their centerline points (fetching via OSM if not cached), and samples points
-        along them to create Mapbox `point(lng lat)` exclusion strings.
-        Mapbox allows up to 50 point exclusions. We'll sample up to ~20 per road.
+        Loads their pre-sampled, evenly distributed points (fetching via OSM if not cached),
+        and creates Mapbox `point(lng lat)` exclusion strings.
+        Mapbox allows up to 50 point exclusions total.
         """
         if not avoid_roads:
             return []
             
         points_to_exclude = []
-        points_per_road = min(20, 50 // len(avoid_roads)) if len(avoid_roads) > 0 else 20
+        # Max 50 points total across all avoided roads
+        points_per_road = max(1, 50 // len(avoid_roads))
         
         from db import load_road_points, store_road_points
 
@@ -130,15 +168,14 @@ class MapboxDirectionsAdapter(APIAdapter):
             
             if cached_points:
                 try:
+                    # The cache now holds pre-sampled points directly (up to 50 points).
+                    # We just need to take up to `points_per_road` evenly from it.
                     if len(cached_points) > 0:
                         step = max(1, len(cached_points) // points_per_road)
-                        sampled_count = 0
-                        for i in range(0, len(cached_points), step):
-                            if sampled_count >= points_per_road:
-                                break
-                            lng, lat = cached_points[i]
+                        sampled = cached_points[::step][:points_per_road]
+                        for pt in sampled:
+                            lng, lat = pt
                             points_to_exclude.append(f"point({lng} {lat})")
-                            sampled_count += 1
                 except Exception as e:
                     print(f"[Mapbox Adapter] Error extracting points for {road}: {e}")
                     
