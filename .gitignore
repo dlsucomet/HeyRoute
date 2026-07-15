@@ -84,6 +84,8 @@ frontend/ios/DerivedData/
 
 # Testing & Cache (Backend)
 backend/test_*.py
+backend/road_points_cache.json
+
 backend/debug_*.py
 backend/debug_*.txt
 backend/check_*.py

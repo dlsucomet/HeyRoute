@@ -171,8 +171,11 @@ class MapboxDirectionsAdapter(APIAdapter):
                     # The cache now holds pre-sampled points directly (up to 50 points).
                     # We just need to take up to `points_per_road` evenly from it.
                     if len(cached_points) > 0:
-                        step = max(1, len(cached_points) // points_per_road)
-                        sampled = cached_points[::step][:points_per_road]
+                        if len(cached_points) <= points_per_road:
+                            sampled = cached_points
+                        else:
+                            indices = [int(i * (len(cached_points) - 1) / (points_per_road - 1)) for i in range(points_per_road)]
+                            sampled = [cached_points[i] for i in indices]
                         for pt in sampled:
                             lng, lat = pt
                             points_to_exclude.append(f"point({lng} {lat})")
