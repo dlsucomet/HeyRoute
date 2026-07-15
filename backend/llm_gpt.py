@@ -61,9 +61,8 @@ async def process_with_gpt(conversation_history, model_name=None):
 
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            # Auto-detect model if we are using the default
-            if effective_model == "Qwen/Qwen2.5-7B-Instruct":
-                effective_model = await _get_auto_model_name(client)
+            # Always auto-detect model from the vLLM server to ensure we match what's actually running
+            effective_model = await _get_auto_model_name(client)
 
             # Request payload — OpenAI-compatible format
             data = {

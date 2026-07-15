@@ -14,7 +14,7 @@ const NavigationScreen = () => {
 
   // The backend passes the route details via route.params.
   // The most critical part for Nav SDK is destination.
-  const { destination, full_geometry, userId, sessionId, routeData } = route.params || {};
+  const { destination, full_geometry, userId, sessionId, exclude_string } = route.params || {};
 
   // Extract destination coordinates properly.
   // The 'destination' param is often a string address, so we extract from full_geometry.
@@ -64,7 +64,7 @@ const NavigationScreen = () => {
       {/* 1. Full-screen Native Mapbox Navigation SDK */}
       <MapboxNavigation
         destination={destCoords}
-        exclude={routeData?.route?.exclude_string || routeData?.exclude_string}
+        exclude={exclude_string}
         showsEndOfRouteFeedback={true}
         onArrive={handleArrival}
         onCancelNavigation={() => navigation.navigate("Home")}

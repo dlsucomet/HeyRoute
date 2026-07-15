@@ -23,7 +23,7 @@ from adapters.adapter import APIAdapter
 from db import load_polygons, store_polygons
 
 # OpenStreetMap Overpass API endpoint for fetching road geometries and nearby features
-OVERPASS_URL = "http://overpass-api.de/api/interpreter"
+OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 async def get_road_polygon(client, road_name: str):
     """
@@ -69,9 +69,10 @@ async def get_road_polygon(client, road_name: str):
 
     try:
         # Execute API requests
+        headers = {"User-Agent": "HeyRouteBackend/1.0", "Accept": "*/*"}
         road_resp, nearby_resp = await asyncio.gather(
-            client.get(OVERPASS_URL, params={"data": road_query}, timeout=30.0),
-            client.get(OVERPASS_URL, params={"data": nearby_query}, timeout=30.0)
+            client.post(OVERPASS_URL, data={"data": road_query}, headers=headers, timeout=30.0),
+            client.post(OVERPASS_URL, data={"data": nearby_query}, headers=headers, timeout=30.0)
         )
         road_resp.raise_for_status()
         nearby_resp.raise_for_status()

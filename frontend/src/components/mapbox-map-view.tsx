@@ -28,6 +28,8 @@ const MapboxMapView = ({
   const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null);
   const cameraRef = useRef<Mapbox.Camera>(null);
 
+  const [routeBounds, setRouteBounds] = useState<any>(null);
+
   // Wait for location permissions on Android (requested by parent)
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
@@ -87,8 +89,8 @@ const MapboxMapView = ({
           ],
         });
 
-        // Fit bounds if in preview mode
-        if (previewMode && cameraRef.current) {
+        // Calculate bounds if in preview mode
+        if (previewMode) {
           const lngs = coordinates.map((c) => c[0]);
           const lats = coordinates.map((c) => c[1]);
           const minLng = Math.min(...lngs);
@@ -96,18 +98,22 @@ const MapboxMapView = ({
           const minLat = Math.min(...lats);
           const maxLat = Math.max(...lats);
 
-          cameraRef.current.fitBounds(
-            [maxLng, maxLat], // ne
-            [minLng, minLat], // sw
-            50, // padding
-            1000 // animation duration
-          );
+          setRouteBounds({
+            ne: [maxLng, maxLat],
+            sw: [minLng, minLat],
+            paddingLeft: 50,
+            paddingRight: 50,
+            paddingTop: 100,
+            paddingBottom: 250
+          });
         }
       } else {
         setRouteGeoJSON(null);
+        setRouteBounds(null);
       }
     } else {
       setRouteGeoJSON(null);
+      setRouteBounds(null);
     }
   }, [routePolyline, previewMode]);
 
@@ -130,10 +136,13 @@ const MapboxMapView = ({
       >
         <Mapbox.Camera
           ref={cameraRef}
-          followUserLocation={!previewMode || !routeGeoJSON}
+          followUserLocation={!previewMode || (!routeGeoJSON && !routeBounds)}
           followUserMode={previewMode ? "normal" : "course"}
           followPitch={previewMode ? 0 : 60}
-          followZoomLevel={previewMode ? 14 : 17}
+          followZoomLevel={previewMode && !routeBounds ? 14 : 17}
+          bounds={previewMode && routeBounds ? routeBounds : undefined}
+          animationMode="flyTo"
+          animationDuration={1000}
         />
         
         {permissionsGranted && (
