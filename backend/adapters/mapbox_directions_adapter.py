@@ -82,36 +82,48 @@ class MapboxDirectionsAdapter(APIAdapter):
         bbox = "14.402,120.917,14.810,121.150"
         query = f"""
         [out:json][timeout:25];
-        way["highway"]["name"="{road_name}"]({bbox});
+        way["highway"]["name"~"{road_name}", i]({bbox});
         out geom;
         """
-        OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+        endpoints = [
+            "https://overpass-api.de/api/interpreter",
+            "https://lz4.overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter"
+        ]
         headers = {"User-Agent": "HeyRouteBackend/1.0", "Accept": "*/*"}
-        try:
-            resp = await self.client.post(OVERPASS_URL, data={"data": query}, headers=headers, timeout=30.0)
-            resp.raise_for_status()
-            data = resp.json()
-            
-            # Use shapely to merge unordered ways into a continuous line
-            from shapely.geometry import LineString
-            from shapely.ops import linemerge
-            
-            lines = []
-            for elem in data.get("elements", []):
-                if elem["type"] == "way" and "geometry" in elem:
-                    way_coords = [[pt["lon"], pt["lat"]] for pt in elem["geometry"]]
-                    if len(way_coords) >= 2:
-                        lines.append(LineString(way_coords))
-            
-            if not lines:
-                return []
+        
+        for endpoint in endpoints:
+            try:
+                resp = await self.client.post(endpoint, data={"data": query}, headers=headers, timeout=30.0)
+                if resp.status_code != 200:
+                    print(f"[Mapbox Adapter] Overpass API {endpoint} returned {resp.status_code}. Trying next...")
+                    continue
                 
-            merged = linemerge(lines)
-            return self._sample_points_from_geom(merged, 50)
-            
-        except Exception as e:
-            print(f"[Mapbox Adapter] Error fetching centerline for {road_name}: {e}")
-            return None
+                data = resp.json()
+                
+                # Use shapely to merge unordered ways into a continuous line
+                from shapely.geometry import LineString
+                from shapely.ops import linemerge
+                
+                lines = []
+                for elem in data.get("elements", []):
+                    if elem["type"] == "way" and "geometry" in elem:
+                        way_coords = [[pt["lon"], pt["lat"]] for pt in elem["geometry"]]
+                        if len(way_coords) >= 2:
+                            lines.append(LineString(way_coords))
+                
+                if not lines:
+                    print(f"[Mapbox Adapter] No geometry found for {road_name} on {endpoint}")
+                    return []
+                    
+                merged = linemerge(lines)
+                return self._sample_points_from_geom(merged, 50)
+                
+            except Exception as e:
+                print(f"[Mapbox Adapter] Error fetching centerline from {endpoint}: {e}")
+                
+        print(f"[Mapbox Adapter] All Overpass API endpoints failed for {road_name}")
+        return []
 
     def _sample_points_from_geom(self, geom, num_points: int) -> List[List[float]]:
         """Samples evenly spaced points along a LineString or MultiLineString."""
