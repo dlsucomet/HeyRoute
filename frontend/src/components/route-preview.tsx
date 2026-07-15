@@ -289,14 +289,9 @@ const RoutePreviewScreen = () => {
   useEffect(() => {
     const initAndFetch = async () => {
       const raw = getInitialRawRoutes();
-      const isCurrentLocOrigin =
-        start === "Current Location" ||
-        start === "Your location" ||
-        start === "Your Location" ||
-        start === "CURRENT_LOCATION";
-      
-      // Ignore backend geometry if origin is current location, so we fetch exact GPS
-      const hasGeometry = raw.length > 0 && raw[0]?.full_geometry && !isCurrentLocOrigin;
+      // Use the precise Mapbox geometry from the backend if available.
+      // Do NOT throw it away even if origin is "current location", because the backend already resolved it to exact GPS.
+      const hasGeometry = raw.length > 0 && raw[0]?.full_geometry;
       
       if (hasGeometry) {
         setLocalRoutes(raw);
@@ -417,6 +412,7 @@ const RoutePreviewScreen = () => {
       routeDuration: selectedRoute?.duration,
       routeDistance: selectedRoute?.distance,
       routeVia: selectedRoute?.via,
+      exclude_string: selectedRoute?.exclude_string,
       stepsInstructions: selectedRoute?.steps_instructions,
       turnIndices: selectedRoute?.turn_indices,
       fromHistory: fromHistory || false,
@@ -548,6 +544,7 @@ const RoutePreviewScreen = () => {
               routeDuration: selectedRoute?.duration,
               routeDistance: selectedRoute?.distance,
               routeVia: selectedRoute?.via,
+              exclude_string: selectedRoute?.exclude_string,
               fromHistory: fromHistory || false,
               routeOption,
               avoidList,
