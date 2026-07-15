@@ -78,13 +78,36 @@ class MapboxDirectionsAdapter(APIAdapter):
         except Exception as e:
             print(f"Reverse Geocoding error for {lat}, {lng}: {e}")
 
+    async def _get_road_centerline_points(self, road_name: str) -> List[List[float]]:
+        bbox = "14.402,120.917,14.810,121.150"
+        query = f"""
+        [out:json][timeout:25];
+        way["highway"]["name"="{road_name}"]({bbox});
+        out geom;
+        """
+        OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+        headers = {"User-Agent": "HeyRouteBackend/1.0", "Accept": "*/*"}
+        try:
+            resp = await self.client.post(OVERPASS_URL, data={"data": query}, headers=headers, timeout=30.0)
+            resp.raise_for_status()
+            data = resp.json()
+            coords = []
+            for elem in data.get("elements", []):
+                if elem["type"] == "way" and "geometry" in elem:
+                    way_coords = [[pt["lon"], pt["lat"]] for pt in elem["geometry"]]
+                    coords.extend(way_coords)
+            return coords
+        except Exception as e:
+            print(f"[Mapbox Adapter] Error fetching centerline for {road_name}: {e}")
+            return None
+
     # ---------- Helper for Road Avoidance ----------
     async def _get_exclusion_points(self, avoid_roads: List[str]) -> List[str]:
         """
         Takes a list of road names to avoid.
-        Loads their polygons (fetching via OSM if not cached), and samples points
+        Loads their centerline points (fetching via OSM if not cached), and samples points
         along them to create Mapbox `point(lng lat)` exclusion strings.
-        Mapbox allows up to 50 point exclusions. We'll sample up to ~10-15 per road.
+        Mapbox allows up to 50 point exclusions. We'll sample up to ~20 per road.
         """
         if not avoid_roads:
             return []
@@ -92,46 +115,32 @@ class MapboxDirectionsAdapter(APIAdapter):
         points_to_exclude = []
         points_per_road = min(20, 50 // len(avoid_roads)) if len(avoid_roads) > 0 else 20
         
+        from db import load_road_points, store_road_points
+
         for road in avoid_roads:
-            poly_data = await load_polygons(road)
-            if not poly_data:
-                print(f"[Mapbox Adapter] Polygons for {road} not found in DB. Fetching from OSM...")
-                geom = await get_road_polygon(self.client, road)
-                if geom:
-                    await store_polygons(road, geom)
-                    poly_data = geom
+            cached_points = await load_road_points(road)
+            if not cached_points:
+                print(f"[Mapbox Adapter] Centerline points for {road} not found in DB. Fetching from OSM...")
+                cached_points = await self._get_road_centerline_points(road)
+                if cached_points:
+                    await store_road_points(road, cached_points)
                 else:
                     print(f"[Mapbox Adapter] Could not fetch geometry for {road}. Skipping exclusion.")
                     continue
             
-            # Extract points from the polygon boundaries or centroids
-            if poly_data:
+            if cached_points:
                 try:
-                    if hasattr(poly_data, 'geoms'):
-                        geoms = list(poly_data.geoms)
-                    else:
-                        geoms = [poly_data]
-                    
-                    # Sort by area or length to prioritize main segments
-                    geoms.sort(key=lambda g: g.area, reverse=True)
-                    
-                    sampled_count = 0
-                    for geom in geoms:
-                        if sampled_count >= points_per_road:
-                            break
-                        
-                        # Get exterior coordinates
-                        coords = list(geom.exterior.coords)
-                        if len(coords) > 0:
-                            step = max(1, len(coords) // (points_per_road - sampled_count))
-                            for i in range(0, len(coords), step):
-                                if sampled_count >= points_per_road:
-                                    break
-                                lng, lat = coords[i]
-                                points_to_exclude.append(f"point({lng} {lat})")
-                                sampled_count += 1
+                    if len(cached_points) > 0:
+                        step = max(1, len(cached_points) // points_per_road)
+                        sampled_count = 0
+                        for i in range(0, len(cached_points), step):
+                            if sampled_count >= points_per_road:
+                                break
+                            lng, lat = cached_points[i]
+                            points_to_exclude.append(f"point({lng} {lat})")
+                            sampled_count += 1
                 except Exception as e:
-                    print(f"[Mapbox Adapter] Error extracting points from polygon for {road}: {e}")
+                    print(f"[Mapbox Adapter] Error extracting points for {road}: {e}")
                     
         return points_to_exclude
 

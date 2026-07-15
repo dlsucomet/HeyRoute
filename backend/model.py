@@ -888,6 +888,8 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
             }
         )
 
+    successful_attempt_label = None
+
     for attempt in attempts:
         try:
             routes_data, ors_latency = await adapter.get_directions(
@@ -925,6 +927,7 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
             return [], {}, {"heyroute": response, "ors_latency": ors_latency, "user_id": user_id, "session_id": session_id}
 
         if routes_data:
+            successful_attempt_label = attempt["label"]
             break
 
         asyncio.create_task(
@@ -985,6 +988,9 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
     response = ""
     if not navigation_started:
         response = await format_heyroute_response(route_summary)
+
+    if successful_attempt_label == "retry_without_avoid":
+        response += f" However, I couldn't find an alternative route that completely avoids {', '.join(avoid_roads)}, so I generated the standard recommended route instead."
     if origin == "current location":
         origin = "Your location"
 

@@ -512,4 +512,39 @@ async def load_trip_history(user_id: str, limit: int = 10):
     except Exception as e:
         print(f"Error loading trips: {e}")
         return []
-    
+
+import os
+import json
+
+POINTS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "road_points_cache.json")
+
+async def load_road_points(road_name: str) -> list:
+    """
+    Retrieves stored road centerline points for Mapbox avoidance.
+    """
+    if os.path.exists(POINTS_CACHE_FILE):
+        try:
+            with open(POINTS_CACHE_FILE, "r") as f:
+                cache = json.load(f)
+                return cache.get(road_name.lower())
+        except Exception:
+            pass
+    return None
+
+async def store_road_points(road_name: str, points: list):
+    """
+    Stores road centerline points for Mapbox avoidance.
+    """
+    cache = {}
+    if os.path.exists(POINTS_CACHE_FILE):
+        try:
+            with open(POINTS_CACHE_FILE, "r") as f:
+                cache = json.load(f)
+        except Exception:
+            pass
+    cache[road_name.lower()] = points
+    try:
+        with open(POINTS_CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+    except Exception as e:
+        print(f"Failed to write road points cache: {e}")    
