@@ -69,7 +69,7 @@ async def process_with_gpt(conversation_history, model_name=None):
                 "model": effective_model,
                 "messages": conversation_history,
                 "temperature": 0.0,
-                "max_tokens": 1024
+                "max_tokens": 256
             }
 
             # No auth headers needed for self-hosted server
