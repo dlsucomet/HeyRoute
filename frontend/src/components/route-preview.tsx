@@ -141,6 +141,8 @@ const RoutePreviewScreen = () => {
   const [activeRouteId, setActiveRouteId] = useState("1");
   const [navSdkEta, setNavSdkEta] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentStart, setCurrentStart] = useState<string>(start);
+  const [currentDestination, setCurrentDestination] = useState<string>(destination);
   const hasAnnouncedEtaRef = useRef(false);
 
   const handleEtaUpdated = (eta: string, distanceKm?: number) => {
@@ -403,9 +405,10 @@ const RoutePreviewScreen = () => {
     const newPrefs = heyrouteData.preferences || heyrouteData.preference || {};
 
     const payload = {
-      start: start,
-      destination: destination,
+      start: currentStart,
+      destination: currentDestination,
       userId: userId,
+      preference: routeOption || "recommended",
       sessionId: heyrouteData.session_id || sessionId,
       full_geometry: selectedRoute?.full_geometry,
       alternative_routes: heyrouteData.alternatives || [],
@@ -427,8 +430,28 @@ const RoutePreviewScreen = () => {
 
   const handleRoutePreviewTriggered = (heyrouteData: any) => {
     setIsModalVisible(false);
-    setHeyrouteResponse(heyrouteData.heyroute_response || "Updating routes...");
-    // Logic to update local route state if AI suggests a different route could go here
+    
+    if (heyrouteData?.route) {
+      const raw = [heyrouteData.route];
+      if (heyrouteData.alternatives) {
+        raw.push(...heyrouteData.alternatives);
+      }
+      setLocalRoutes(raw);
+      if (raw[0]?.full_geometry) {
+        setActiveFullGeometry(raw[0].full_geometry);
+      }
+      setActiveRouteId("1");
+    }
+
+    if (heyrouteData?.destination) {
+      setCurrentDestination(heyrouteData.destination);
+    }
+    
+    if (heyrouteData?.origin) {
+      setCurrentStart(heyrouteData.origin);
+    }
+
+    setHeyrouteResponse(heyrouteData?.heyroute || "Updating routes...");
   };
 
   // Build formatted routes for the panel
@@ -463,7 +486,7 @@ const RoutePreviewScreen = () => {
         <View style={StyleSheet.absoluteFill}>
           <MapboxMapView
             previewMode={true}
-            destination={destination}
+            destination={currentDestination}
             routePolyline={activeFullGeometry}
             onEtaUpdated={handleEtaUpdated}
           />
@@ -476,7 +499,7 @@ const RoutePreviewScreen = () => {
           </Pressable>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerLabel} numberOfLines={1}>
-              {formatLocation(start, "Your location")} → {formatLocation(destination, "Destination")}
+              {formatLocation(currentStart, "Your location")} → {formatLocation(currentDestination, "Destination")}
             </Text>
             {preference ? (
               <View style={styles.preferenceBadge}>
@@ -531,22 +554,23 @@ const RoutePreviewScreen = () => {
         />
 
         <RouteSelectionPanel
-          start={start}
-          destination={destination}
+          start={currentStart}
+          destination={currentDestination}
           userId={userId}
           routes={formattedRoutes}
           onStartPress={() => {
             const selectedRoute = formattedRoutes.find(r => r.id === activeRouteId) || formattedRoutes[0];
             (navigation as any).navigate("NavigationScreen", {
-              start, destination, userId, sessionId,
+              start: currentStart, destination: currentDestination, userId, sessionId,
               full_geometry: selectedRoute?.full_geometry,
+              routeOption: selectedRoute?.option || "recommended",
+              routeData: { route: selectedRoute },
               alternative_routes: localRoutes.slice(1),
               routeDuration: selectedRoute?.duration,
               routeDistance: selectedRoute?.distance,
               routeVia: selectedRoute?.via,
               exclude_string: selectedRoute?.exclude_string,
               fromHistory: fromHistory || false,
-              routeOption,
               avoidList,
               majorRoad
             });
