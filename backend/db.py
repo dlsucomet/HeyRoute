@@ -516,7 +516,7 @@ async def load_trip_history(user_id: str, limit: int = 10):
 import os
 import json
 
-POINTS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "road_points_cache_v2.json")
+POINTS_CACHE_FILE = os.path.join(os.path.dirname(__file__), "road_points_cache.json")
 
 async def load_road_points(road_name: str) -> list:
     """
