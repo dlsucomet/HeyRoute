@@ -14,6 +14,9 @@ import { Sound } from "react-native-nitro-sound";
 import RNFS from "react-native-fs";
 import { useNetInfo } from "@react-native-community/netinfo";
 import { customEvent } from 'vexo-analytics';
+import { NativeModules } from "react-native";
+
+const { WakeWordModule } = NativeModules;
 import Geolocation from "react-native-geolocation-service";
 import { ASR_URL } from "@env";
 import { ActiveVoiceModalProps } from "../types/navigation";
@@ -264,6 +267,10 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   const startRecording = async (useVad: boolean = true) => {
     try {
       setResult("Listening...");
+      
+      // Forcefully pause WakeWord listener to free up the microphone
+      try { WakeWordModule.stopListening(); } catch (e) {}
+      
       await Sound.startRecorder(RECORD_PATH, undefined, useVad);
       setIsRecording(true);
 

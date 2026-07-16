@@ -591,7 +591,7 @@ const RoutePreviewScreen = () => {
           destination={currentDestination}
           userId={userId}
           routes={formattedRoutes}
-          onStartPress={() => {
+          onStartNavigation={() => {
             const selectedRoute = formattedRoutes.find(r => r.id === activeRouteId) || formattedRoutes[0];
             (navigation as any).navigate("NavigationScreen", {
               start: currentStart, destination: currentDestination, userId, sessionId,
@@ -608,9 +608,10 @@ const RoutePreviewScreen = () => {
               majorRoad
             });
           }}
-          onRouteSelect={(selectedRoute: any) => {
-            setActiveRouteId(selectedRoute?.id);
-            if (selectedRoute?.full_geometry) setActiveFullGeometry(selectedRoute.full_geometry);
+          onSelectRoute={(id: string) => {
+            setActiveRouteId(id);
+            const route = formattedRoutes.find(r => r.id === id);
+            if (route?.full_geometry) setActiveFullGeometry(route.full_geometry);
           }}
         />
 
