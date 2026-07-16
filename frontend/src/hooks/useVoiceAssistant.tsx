@@ -317,21 +317,16 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (heyrouteData?.route_preview) {
       console.log("[ASR] Route preview available.");
 
-      // Trigger the navigation UI update immediately
-      onRoutePreview?.(heyrouteData);
-
-      // Speak the response and wait for it to finish
+      // Tell the next screen to listen, and what to say!
+      heyrouteData.continue_listening = true;
       if (responseText && !isErrorResponse) {
-        try {
-          await playTTS(responseText);
-        } catch (ttsErr) {
-          console.error("[ASR] TTS Error during preview handoff:", ttsErr);
-        }
+        heyrouteData.route_preview_tts = responseText;
       }
 
-      // Loop to listen for "Let's go"
-      setResult("Your turn...");
-      await startRecording(true);
+      await endConversation(true);
+      
+      // Trigger the navigation UI update immediately
+      onRoutePreview?.(heyrouteData);
       return;
     }
 

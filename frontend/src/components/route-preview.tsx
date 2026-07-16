@@ -110,7 +110,7 @@ type RoutePreviewParams = {
     avoidList?: string[];
     majorRoad?: string;
     autoStartMicrophone?: boolean; // Flag to trigger listening immediately on mount
-    micDelay?: number; // Delay to prevent the mic from catching the speaker's own voice
+    routePreviewTts?: string; // TTS text to speak before listening
   };
 };
 
@@ -363,22 +363,28 @@ const RoutePreviewScreen = () => {
   // to catch the active voice detection from the Home Screen
   useEffect(() => {
     if (route.params?.autoStartMicrophone) {
-      const delay = route.params?.micDelay || 500;
-      console.log(`${LOG_PREFIX} Waiting ${delay}ms for AI to finish speaking before starting mic...`);
+      console.log(`${LOG_PREFIX} autoStartMicrophone is true!`);
       
-      const timer = setTimeout(() => {
-        // Trigger the modal and recording logic AFTER the AI finishes talking
+      const startMic = () => {
         shouldAutoStartVadMode.current = true;
+        shouldAutoStartRecording.current = true;
         setIsModalVisible(true);
-      }, delay);
+      };
+
+      if (route.params?.routePreviewTts) {
+        hasAnnouncedEtaRef.current = true; // Prevent ETA TTS overlap
+        console.log(`${LOG_PREFIX} Playing route preview TTS before starting mic...`);
+        speakTTS(route.params.routePreviewTts)
+          .then(() => startMic())
+          .catch(() => startMic());
+      } else {
+        startMic();
+      }
 
       // Clear the param immediately
-      navigation.setParams({ autoStartMicrophone: undefined, micDelay: undefined } as any);
-      
-      // Cleanup the timer just in case the user navigates away early
-      return () => clearTimeout(timer);
+      navigation.setParams({ autoStartMicrophone: undefined, routePreviewTts: undefined } as any);
     }
-  }, [route.params?.autoStartMicrophone, navigation]);
+  }, [route.params?.autoStartMicrophone, navigation, route.params?.routePreviewTts]);
 
   // --- HANDLERS ---
   const handleVoicePress = () => {

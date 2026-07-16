@@ -313,7 +313,7 @@ const HomeScreen = () => {
       avoidList: preferences.avoid_list,
       majorRoad: preferences.major_road,
       autoStartMicrophone: heyrouteData.continue_listening,
-      micDelay: heyrouteData.speech_delay
+      routePreviewTts: heyrouteData.route_preview_tts
     });
   };
 
