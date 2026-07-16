@@ -297,43 +297,28 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (heyrouteData?.route_preview) {
       console.log("[ASR] Route preview available.");
 
-      let estimatedSpeechTime = 500; // Default 0.5s delay
+      // Trigger the navigation UI update immediately
+      onRoutePreview?.(heyrouteData);
 
-      // Speak the response before ending the local conversation
+      // Speak the response and wait for it to finish
       if (responseText && !isErrorResponse) {
         try {
-          playTTS(responseText);
-
-          // Calculate speaking time: ~300ms per word + 1 second buffer
-          estimatedSpeechTime = (responseText.split(" ").length * 300) + 1000;
-
+          await playTTS(responseText);
         } catch (ttsErr) {
           console.error("[ASR] TTS Error during preview handoff:", ttsErr);
         }
       }
 
-      // End the microphone on but set as true to keep the TTS playing
-      await endConversation(true);
-
-      // Inject a flag telling the next screen to pick up the microphone
-      heyrouteData.continue_listening = true;
-      heyrouteData.speech_delay = estimatedSpeechTime;
-
-      // Trigger the navigation
-      onRoutePreview?.(heyrouteData);
+      // Loop to listen for "Let's go"
+      setResult("Your turn...");
+      await startRecording(true);
       return;
     }
 
     // TTS Logic
     if (responseText) {
       try {
-        playTTS(responseText);
-        
-        // Calculate estimated speech time (~300ms per word + 1 second buffer)
-        const fallbackSpeechTime = (responseText.split(" ").length * 300) + 1000;
-        
-        // Wait for the TTS to finish before opening the mic, otherwise the OS mutes the player
-        await new Promise(resolve => setTimeout(resolve, fallbackSpeechTime));
+        await playTTS(responseText);
       } catch (ttsErr) {
         await endConversation();
         return;

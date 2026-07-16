@@ -529,20 +529,37 @@ const RoutePreviewScreen = () => {
              }
           ]}
         >
-          {wakeWordActive && (
+          {wakeWordActive && !isRecordingInModal && !isProcessingInModal && (
             <View style={styles.wakeWordIndicator}>
               <View style={styles.listeningDot} />
               <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+            </View>
+          )}
+          {isRecordingInModal && !isProcessingInModal && (
+            <View style={[styles.wakeWordIndicator, { backgroundColor: 'rgba(255,0,0,0.1)' }]}>
+              <View style={[styles.listeningDot, { backgroundColor: '#ff4d4d' }]} />
+              <Text style={[styles.wakeWordText, { color: '#ff4d4d' }]}>Listening...</Text>
+            </View>
+          )}
+          {isProcessingInModal && (
+            <View style={[styles.wakeWordIndicator, { backgroundColor: 'rgba(128,128,128,0.1)' }]}>
+              <ActivityIndicator size="small" color="#666" style={{ marginRight: 6 }} />
+              <Text style={[styles.wakeWordText, { color: '#666' }]}>Processing...</Text>
             </View>
           )}
           <Pressable
             onPress={handleVoicePress}
             style={({ pressed }) => [
               styles.voiceButton,
+              isRecordingInModal && { backgroundColor: '#ff4d4d' },
               pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <MaterialIcons name="keyboard-voice" size={32} color="#3e0d73" />
+            <MaterialIcons 
+              name={isRecordingInModal ? "stop" : "keyboard-voice"} 
+              size={32} 
+              color={isRecordingInModal ? "#fff" : "#3e0d73"} 
+            />
           </Pressable>
         </View>
 
@@ -560,6 +577,7 @@ const RoutePreviewScreen = () => {
           onRecordingStateChange={setIsRecordingInModal}
           onProcessingStateChange={setIsProcessingInModal}
           onVadModeChange={setVadModeActive}
+          hideUI={true}
         />
 
         <RouteSelectionPanel

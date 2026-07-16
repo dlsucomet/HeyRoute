@@ -30,4 +30,5 @@ export interface ActiveVoiceModalProps {
   onProcessingStateChange?: (val: boolean) => void;
   onVadModeChange?: (val: boolean) => void;
   onResponse?: (res: any) => void;
+  hideUI?: boolean;
 }

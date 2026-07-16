@@ -29,6 +29,7 @@ const ActiveVoiceModal = ({
   onRecordingStateChange,
   onProcessingStateChange,
   onResponse,
+  hideUI = false,
 }: ActiveVoiceModalProps) => {
   useEffect(() => {
     console.log("[Modal] Received identity props:", { userId, sessionId });
@@ -96,6 +97,10 @@ const ActiveVoiceModal = ({
     if (result) return result;
     return "Tap the mic to start recording";
   };
+
+  if (hideUI) {
+    return null;
+  }
 
   return (
     <Modal

@@ -23,7 +23,18 @@ export const speakTTS = async (text: string): Promise<void> => {
 
     // Save buffer to file then play
     await RNFS.writeFile(path, Buffer.from(arrayBuffer).toString("base64"), "base64");
-    await Sound.startPlayer(path);
+    
+    await new Promise<void>((resolve, reject) => {
+      Sound.addPlaybackEndListener(() => {
+        Sound.removePlaybackEndListener();
+        resolve();
+      });
+      
+      Sound.startPlayer(path).catch((err) => {
+        Sound.removePlaybackEndListener();
+        reject(err);
+      });
+    });
   } catch (err) {
     console.error("[TTS Utility] Error playing TTS:", err);
     throw err;
