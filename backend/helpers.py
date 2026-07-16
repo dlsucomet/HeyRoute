@@ -1,5 +1,8 @@
 import re
 import random as rd
+import json
+import difflib
+import os
 
 # List of known toll roads in Metro Manila
 # Used to identify "Avoid Toll" intents into ORS avoid_features
@@ -82,6 +85,16 @@ ROAD_ALIASES = {
     "Pioneer Street": ["Pioneer Street", "Pioneer"],
 }
 
+# --- Fuzzy Matching Setup ---
+PH_ROADS_CACHE = []
+try:
+    roads_path = os.path.join(os.path.dirname(__file__), "philippine_roads.json")
+    with open(roads_path, "r", encoding="utf-8") as f:
+        PH_ROADS_CACHE = json.load(f)
+    print(f"Loaded {len(PH_ROADS_CACHE)} roads for fuzzy matching.")
+except Exception as e:
+    print(f"Warning: Could not load philippine_roads.json. Fuzzy matching degraded. Error: {e}")
+
 async def normalize_road_name(road_name: str) -> str:
     """
     Normalizes a road name using predefined aliases.
@@ -103,6 +116,14 @@ async def normalize_road_name(road_name: str) -> str:
     for standard_name, aliases in ROAD_ALIASES.items():
         if road_upper in [a.upper() for a in aliases]:
             return standard_name
+            
+    # 2. Fuzzy Match against OSM data (if exact match fails)
+    # Using cutoff 0.75 so 4-letter words with 1 typo (e.g. EDCA -> EDSA) still match
+    if PH_ROADS_CACHE:
+        matches = difflib.get_close_matches(road_name.strip(), PH_ROADS_CACHE, n=1, cutoff=0.75)
+        if matches:
+            return matches[0]
+            
     return road_name.strip()
 
 async def check_label_role(text: str, label: str):
