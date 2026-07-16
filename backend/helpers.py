@@ -86,11 +86,13 @@ ROAD_ALIASES = {
 }
 
 # --- Fuzzy Matching Setup ---
-PH_ROADS_CACHE = []
+PH_ROADS_CACHE = {}
 try:
     roads_path = os.path.join(os.path.dirname(__file__), "philippine_roads.json")
     with open(roads_path, "r", encoding="utf-8") as f:
-        PH_ROADS_CACHE = json.load(f)
+        road_list = json.load(f)
+        for r in road_list:
+            PH_ROADS_CACHE[r.lower()] = r
     print(f"Loaded {len(PH_ROADS_CACHE)} roads for fuzzy matching.")
 except Exception as e:
     print(f"Warning: Could not load philippine_roads.json. Fuzzy matching degraded. Error: {e}")
@@ -142,6 +144,7 @@ async def normalize_road_name(road_name: str) -> str:
         if word in road_lower:
             # Replace the word with the number, case-insensitive
             road_name = re.sub(rf'\b{word}\b', word_to_num[word], road_name, flags=re.IGNORECASE)
+            road_lower = road_name.strip().lower()
 
     road_upper = road_name.strip().upper()
     for standard_name, aliases in ROAD_ALIASES.items():
@@ -151,9 +154,9 @@ async def normalize_road_name(road_name: str) -> str:
     # 2. Fuzzy Match against OSM data (if exact match fails)
     # Using cutoff 0.75 so 4-letter words with 1 typo (e.g. EDCA -> EDSA) still match
     if PH_ROADS_CACHE:
-        matches = difflib.get_close_matches(road_name.strip(), PH_ROADS_CACHE, n=1, cutoff=0.75)
+        matches = difflib.get_close_matches(road_lower, PH_ROADS_CACHE.keys(), n=1, cutoff=0.75)
         if matches:
-            return matches[0]
+            return PH_ROADS_CACHE[matches[0]]
             
     return road_name.strip()
 
