@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 from llm_gpt import process_with_gpt
 from adapters.mapbox_directions_adapter import MapboxDirectionsAdapter
 from helpers import build_gpt_prompt, normalize_road_name, format_heyroute_response, format_alternates_response, check_label_role, resolve_collisions, toll_roads, extract_json
-from prompts import SYSTEM_PROMPT, CLARIFICATIONS_PROMPT, TRIP_CHANGES_PROMPT, INTENTS_PROMPT, NAVIGATION_INTENTS_PROMPT, PREFERENCE_INTENTS_PROMPT, SEMANTICS_PROMPT
+from prompts import SYSTEM_PROMPT, CLARIFICATIONS_PROMPT, TRIP_CHANGES_PROMPT, INTENTS_PROMPT, NAVIGATION_INTENTS_PROMPT, PREFERENCE_INTENTS_PROMPT, SEMANTICS_PROMPT, JSON_SCHEMA_PROMPT
 from db import log_event, log_system_error, log_final_json, log_preference, log_route_details, load_saved_places, store_trip, load_most_used_road, store_route_familiarity, load_most_avoided_road, store_route_avoidance, load_most_preferred_option, store_route_option_preference
 
 # Load environment variables from .env file
@@ -261,6 +261,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 if state.semantic_context["destination_known"]:
                     final_json_prompt = [
                         {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": JSON_SCHEMA_PROMPT},
                         {"role": "system", "content": TRIP_CHANGES_PROMPT},
                         {"role": "system", "content": SEMANTICS_PROMPT},
                         {"role": "user", "content": (
@@ -274,6 +275,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 else:
                     final_json_prompt = [
                         {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": JSON_SCHEMA_PROMPT},
                         {"role": "system", "content": TRIP_CHANGES_PROMPT},
                         {"role": "user", "content": (
                             "The conversation so far is:\n" +
@@ -287,6 +289,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 if state.semantic_context["destination_known"]:
                     final_json_prompt = [
                         {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": JSON_SCHEMA_PROMPT},
                         {"role": "system", "content": SEMANTICS_PROMPT},
                         {"role": "user", "content": (
                             "The conversation so far is:\n" +
@@ -299,6 +302,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 else:
                     final_json_prompt = [
                         {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "system", "content": JSON_SCHEMA_PROMPT},
                         {"role": "user", "content": (
                             "The conversation so far is:\n" +
                             "\n".join(f"User: {m['content']}" if m["role"] == "user" else f"Assistant: {m['content']}"
