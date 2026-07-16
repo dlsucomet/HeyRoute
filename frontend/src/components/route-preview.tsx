@@ -452,6 +452,15 @@ const RoutePreviewScreen = () => {
     }
 
     setHeyrouteResponse(heyrouteData?.heyroute || "Updating routes...");
+
+    if (heyrouteData?.continue_listening) {
+      const delay = heyrouteData.speech_delay || 500;
+      shouldAutoStartVadMode.current = true;
+      shouldAutoStartRecording.current = true;
+      setTimeout(() => {
+        setIsModalVisible(true);
+      }, delay);
+    }
   };
 
   // Build formatted routes for the panel
