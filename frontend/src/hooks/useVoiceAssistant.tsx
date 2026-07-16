@@ -89,14 +89,34 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
         return;
       }
 
-      const finalPath = await Sound.stopRecorder();
+      let finalPath: string | null = null;
+      try {
+        finalPath = await Sound.stopRecorder();
+      } catch (err) {
+        console.warn("[ASR] stopRecorder failed, ignoring error:", err);
+      }
+      
       setIsRecording(false);
       setIsProcessing(true);
 
-      if (!finalPath) throw new Error("No audio file path returned.");
+      if (!finalPath) {
+        setResult("Recording was interrupted. Please try again.");
+        setIsProcessing(false);
+        if (conversationActiveRef.current) await startRecording(true);
+        return;
+      }
 
-      const fileStats = await RNFS.stat(finalPath);
-      console.log(`[ASR] Audio file size: ${fileStats.size} bytes`);
+      let fileStats;
+      try {
+        fileStats = await RNFS.stat(finalPath);
+        console.log(`[ASR] Audio file size: ${fileStats.size} bytes`);
+      } catch (err) {
+        console.warn("[ASR] Failed to stat audio file:", err);
+        setResult("Audio file is missing. Please try again.");
+        setIsProcessing(false);
+        if (conversationActiveRef.current) await startRecording(true);
+        return;
+      }
 
       // If file is too small, the user likely didn't speak
       if (fileStats.size < 200) {
@@ -355,6 +375,9 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       setResult(!isConnected ? "No connection" : "Mic denied");
       return;
     }
+    
+    if (vadTimeout.current) clearTimeout(vadTimeout.current);
+    
     conversationHistory.current = [];
     conversationActiveRef.current = true;
     setIsConversationActive(true);
@@ -368,6 +391,8 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Ends the current conversation.
    */
   const endConversation = async (keepAudioAlive = false) => {
+    if (vadTimeout.current) clearTimeout(vadTimeout.current);
+    
     conversationActiveRef.current = false;
     setIsConversationActive(false);
     conversationHistory.current = [];
