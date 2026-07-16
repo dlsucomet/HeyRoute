@@ -111,6 +111,37 @@ async def normalize_road_name(road_name: str) -> str:
     Returns:
         str: The normalized road name.
     """
+    
+    # Pre-process: Convert spelled-out ordinal numbers from ASR into digits
+    # e.g., "twenty fifth avenue" -> "25th avenue"
+    ones = ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth"]
+    tens = ["", "tenth", "twentieth", "thirtieth", "fortieth", "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth"]
+    tens_base = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+    teens = ["tenth", "eleventh", "twelfth", "thirteenth", "fourteenth", "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth"]
+
+    word_to_num = {}
+    for i in range(1, 100):
+        if i < 10: word = ones[i]
+        elif i < 20: word = teens[i-10]
+        else:
+            t, o = divmod(i, 10)
+            word = tens[t] if o == 0 else f"{tens_base[t]} {ones[o]}"
+        
+        if i % 10 == 1 and i != 11: suffix = "st"
+        elif i % 10 == 2 and i != 12: suffix = "nd"
+        elif i % 10 == 3 and i != 13: suffix = "rd"
+        else: suffix = "th"
+        
+        word_to_num[word] = f"{i}{suffix}"
+        
+    # Sort keys by length descending to match longer phrases first (e.g. "twenty fifth" before "fifth")
+    sorted_words = sorted(word_to_num.keys(), key=len, reverse=True)
+    
+    road_lower = road_name.strip().lower()
+    for word in sorted_words:
+        if word in road_lower:
+            # Replace the word with the number, case-insensitive
+            road_name = re.sub(rf'\b{word}\b', word_to_num[word], road_name, flags=re.IGNORECASE)
 
     road_upper = road_name.strip().upper()
     for standard_name, aliases in ROAD_ALIASES.items():
