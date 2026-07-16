@@ -32,7 +32,7 @@ When outputting the final travel JSON, you MUST return it exactly in this format
 {
   "origin": "", // currently always "current location" unless the user specifies otherwise
   "destination": "",
-  "via": [], // should always be an array, even if there's only one item or none
+  "via": [], // should always be an array. DO NOT invent, guess, or hallucinate roads. ONLY include a road if the user EXPLICITLY asks to take it.
   "avoid": [], // should always be an array, even if there's only one item or none
   "option": "" // either "fastest", "shortest", or "recommended". If the user does not specify, default to "recommended"
 }
@@ -72,6 +72,7 @@ TRIP_CHANGES_PROMPT = """
    - Update only the changed field (origin, destination, via, avoid, or option).
    - Keep all previously confirmed details intact unless the user explicitly overrides them.
    - If the user explicitly removes a restriction (e.g., 'I don't mind tolls anymore', 'Take any road'), you must remove that item from the `avoid` or `via` arrays.
+   - IMPORTANT: If the user changes BOTH the origin and destination, treat it as a completely new trip. CLEAR all previous `via` and `avoid` constraints unless the user explicitly states them again.
    - If the update is ambiguous, ask for clarification before applying it.
 
 3. Follow these distinctions carefully:

@@ -453,7 +453,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                         asyncio.create_task(log_event(user_id=user_id, session_id=session_id, event_type="PREFERENCE_PROMPTED", response=response, turn_number=current_turn))
                         return {"heyroute": response, "history": state.conversation_history, "turn_number": current_turn, "intents": intents, "intent_detect_latency": intent_detect_latency, "final_json_latency": final_json_latency, "geocode_latency": geocode_latency, "user_id": user_id, "session_id": session_id}
                     
-                state.routes_data, state.primary_route, response = await generate_route_and_response(user_id, session_id, origin_coords, destination_coords, route_option, via_coords, avoid_roads, avoid_features, state.final_gpt_response, state.navigation_started)
+                state.routes_data, state.primary_route, response = await generate_route_and_response(user_id, session_id, origin_coords, destination_coords, route_option, via_coords, avoid_roads, avoid_features, state.final_gpt_response, state.navigation_started, conversational_text=conversational_text)
                 state.route_created = True
                 state.pending_preference = False
                 state.conversation_history.append({"role": "assistant", "content": response.get("heyroute")})
