@@ -60,6 +60,8 @@ export const useWakeWord = ({
   }, []);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
     const toggleListening = () => {
       try {
         if (isRecording || isProcessing || vadMode) {
@@ -71,10 +73,12 @@ export const useWakeWord = ({
           }
         } else if (visible) {
           if (!isListeningRef.current) {
-            console.log("[WakeWord] Resuming listener.");
-            WakeWordModule.startListening();
-            isListeningRef.current = true;
-            onStatusChangeRef.current?.(true);
+            timeoutId = setTimeout(() => {
+              console.log("[WakeWord] Resuming listener.");
+              WakeWordModule.startListening();
+              isListeningRef.current = true;
+              onStatusChangeRef.current?.(true);
+            }, 300);
           }
         } else {
             WakeWordModule.stopListening();
@@ -87,5 +91,9 @@ export const useWakeWord = ({
     };
 
     toggleListening();
+    
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [isRecording, isProcessing, vadMode, visible]);
 };

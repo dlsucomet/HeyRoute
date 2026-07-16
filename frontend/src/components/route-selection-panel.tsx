@@ -13,23 +13,26 @@ import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView } fro
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 type RouteSelectionPanelProps = {
-  onStartPress: () => void;       // called when Start is pressed
-  onRouteSelect?: (routeData: any) => void; // called when route is selected
+  onStartNavigation: () => void;       // called when Start is pressed
+  onSelectRoute?: (id: string) => void; // called when route is selected
+  onPanelStateChange?: (expanded: boolean) => void;
+  activeRouteId?: string;
   userId?: string;
-  start: string;       
-  destination: string;
+  start?: string;       
+  destination?: string;
   routes: any[]; // Array of formatted route objects
 };
 
-const RouteSelectionPanel = ({ onStartPress, onRouteSelect, userId, start, destination, routes}: RouteSelectionPanelProps) => {
+const RouteSelectionPanel = ({ onStartNavigation, onSelectRoute, onPanelStateChange, activeRouteId, userId, start, destination, routes}: RouteSelectionPanelProps) => {
   const availableRoutes = routes && routes.length > 0 ? routes : []; // safe fallback if no routes are passed
   const [selectedId, setSelectedId] = useState(availableRoutes[0]?.id || "1"); // default to the first route's ID
 
   const [isExpanded, setIsExpanded] = useState(false); // If panel is in list or collapsed mode
   const heightAnim = useRef(new Animated.Value(230)).current;
 
-  // Find the active route, default to first available, or empty object
-  const activeRoute = availableRoutes.find((r) => r.id === selectedId) || availableRoutes[0] || {};
+  // Use parent's activeRouteId if provided, otherwise fallback to local selectedId
+  const currentId = activeRouteId || selectedId;
+  const activeRoute = availableRoutes.find((r) => r.id === currentId) || availableRoutes[0] || {};
 
   // Toggle between preview and expanded list 
   const togglePanel = () => {
@@ -44,6 +47,9 @@ const RouteSelectionPanel = ({ onStartPress, onRouteSelect, userId, start, desti
       }).start();
 
       setIsExpanded(!isExpanded);
+      if (onPanelStateChange) {
+        onPanelStateChange(!isExpanded);
+      }
     } catch {}
   };
 
@@ -55,9 +61,8 @@ const RouteSelectionPanel = ({ onStartPress, onRouteSelect, userId, start, desti
     try {
       setSelectedId(id);
 
-      const selectedRouteObject = availableRoutes.find(r => r.id === id);
-      if (onRouteSelect && selectedRouteObject) {
-        onRouteSelect(selectedRouteObject);
+      if (onSelectRoute) {
+        onSelectRoute(id);
       }
 
       // Automatically minimize after selection to show the 'Start' view
@@ -93,7 +98,7 @@ const RouteSelectionPanel = ({ onStartPress, onRouteSelect, userId, start, desti
               style={styles.startButton} 
               onPress={() => {
                 try {
-                  onStartPress();
+                  onStartNavigation();
                 } catch {}
               }}
             >
