@@ -33,8 +33,8 @@ When outputting the final travel JSON, you MUST return it exactly in this format
   "origin": "", // currently always "current location" unless the user specifies otherwise
   "destination": "",
   "via": [], // should always be an array. DO NOT invent, guess, or hallucinate roads. ONLY include a road if the user EXPLICITLY asks to take it.
-  "avoid": [], // should always be an array, even if there's only one item or none
-  "option": "" // either "fastest", "shortest", or "recommended". If the user does not specify, default to "recommended"
+  "avoid": [], // should always be an array. DO NOT invent or guess constraints. ONLY avoid things if the user EXPLICITLY asks to avoid them.
+  "option": "" // either "fastest", "shortest", or "recommended". If the user does not specify, default to "recommended". DO NOT assume "fastest" unless requested.
 }
 """
 
@@ -55,6 +55,7 @@ CLARIFICATIONS_PROMPT = """
    - If multiple interpretations exist, suggest options simply.
      Example: "Did you mean Mall of Asia in Pasay City, or another Mall of Asia?"
    - Do not repeat information the user already confirmed earlier.
+   - CRITICAL: DO NOT hallucinate, guess, or invent a route. Your ONLY job is to ask a clarification question. Never pretend to navigate or provide turn-by-turn directions.
 
 3. Always apply GLOBAL RULES while following this scenario.
 """

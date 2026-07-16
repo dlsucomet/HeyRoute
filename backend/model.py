@@ -993,7 +993,10 @@ async def generate_route_and_response(user_id, session_id, origin, destination, 
 
     response = ""
     if not navigation_started:
-        response = await format_heyroute_response(route_summary)
+        if conversational_text and len(conversational_text) > 10:
+            response = conversational_text
+        else:
+            response = await format_heyroute_response(route_summary)
 
     if successful_attempt_label == "retry_without_avoid":
         response += f" However, I couldn't find an alternative route that completely avoids {', '.join(avoid_roads)}, so I generated the standard recommended route instead."
