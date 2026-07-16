@@ -34,11 +34,10 @@ class MapboxDirectionsAdapter(APIAdapter):
     def __init__(self):
         self.client = httpx.AsyncClient()
         self.mapbox_api_key = os.getenv("MAPBOX_ACCESS_TOKEN")
-        self.geoapify_api_key = os.getenv("GEOAPIFY_API_KEY")
 
-        # Geoapify endpoints
-        self.geocode_url = "https://api.geoapify.com/v1/geocode/search"
-        self.reverse_geocode_url = "https://api.geoapify.com/v1/geocode/reverse"
+        # Mapbox Search Geocoding endpoints (v6)
+        self.geocode_url = "https://api.mapbox.com/search/geocode/v6/forward"
+        self.reverse_geocode_url = "https://api.mapbox.com/search/geocode/v6/reverse"
 
         # Mapbox Directions API endpoint base
         self.directions_url_base = "https://api.mapbox.com/directions/v5/mapbox"
@@ -48,9 +47,9 @@ class MapboxDirectionsAdapter(APIAdapter):
         if not place_name:
             return None
         params = {
-            "text": place_name, 
-            "apiKey": self.geoapify_api_key,
-            "filter": "countrycode:ph"
+            "q": place_name, 
+            "access_token": self.mapbox_api_key,
+            "country": "ph"
         }
         try:
             resp = await self.client.get(self.geocode_url, params=params)
@@ -67,13 +66,17 @@ class MapboxDirectionsAdapter(APIAdapter):
     async def reverse_geocode(self, lat: float, lng: float) -> str:
         if not lat or not lng:
             return None
-        params = {"lat": lat, "lon": lng, "apiKey": self.geoapify_api_key}
+        params = {
+            "longitude": lng, 
+            "latitude": lat, 
+            "access_token": self.mapbox_api_key
+        }
         try:
             resp = await self.client.get(self.reverse_geocode_url, params=params)
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get("features"):
-                    return data["features"][0]["properties"].get("formatted", f"{lat},{lng}")
+                    return data["features"][0]["properties"].get("full_address") or data["features"][0]["properties"].get("name", f"{lat},{lng}")
             return f"{lat},{lng}"
         except Exception as e:
             print(f"Reverse Geocoding error for {lat}, {lng}: {e}")
