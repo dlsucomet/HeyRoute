@@ -376,8 +376,6 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       return;
     }
     
-    if (vadTimeout.current) clearTimeout(vadTimeout.current);
-    
     conversationHistory.current = [];
     conversationActiveRef.current = true;
     setIsConversationActive(true);
@@ -391,7 +389,6 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Ends the current conversation.
    */
   const endConversation = async (keepAudioAlive = false) => {
-    if (vadTimeout.current) clearTimeout(vadTimeout.current);
     
     conversationActiveRef.current = false;
     setIsConversationActive(false);
