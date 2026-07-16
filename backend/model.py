@@ -313,7 +313,9 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 final_response, final_json_latency = await process_with_gpt(final_json_prompt)
 
             try:
-                state.final_gpt_response = json.loads(extract_json(final_response))
+                extracted_json_str = extract_json(final_response)
+                conversational_text = final_response.replace(extracted_json_str, "").replace("```json", "").replace("```", "").strip()
+                state.final_gpt_response = json.loads(extracted_json_str)
                 asyncio.create_task(log_final_json(user_id=user_id, session_id=session_id,
                     payload={
                         "origin": state.final_gpt_response.get("origin"),
@@ -848,7 +850,7 @@ async def resolve_semantic_places(user_input: str, semantic_context: dict, user_
             semantic_context["destination_value"] = coords
     return semantic_context
 
-async def generate_route_and_response(user_id, session_id, origin, destination, option, via, avoid_roads, avoid_features, final_gpt_response, navigation_started, road=""):
+async def generate_route_and_response(user_id, session_id, origin, destination, option, via, avoid_roads, avoid_features, final_gpt_response, navigation_started, road="", conversational_text=""):
     """
     Fetch routes, prepare summary, generate HeyRoute conversational response.
 
