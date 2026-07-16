@@ -200,11 +200,15 @@ async def resolve_collisions(intents):
         dict: A dictionary of resolved intents.
     """
 
-    # Pattern 1 & 3: If anything is unclear, Clarification wins.
-    if intents.get("clarifications") and (intents.get("generate_routes") or intents.get("trip_changes")):
-        return {k: (k == "clarifications") for k in intents}
+    # Pattern 1: Trip Changes vs Clarifications
+    if intents.get("trip_changes") and intents.get("clarifications"):
+        return {k: (k == "trip_changes") for k in intents}
 
-    # Pattern 2: Start Nav vs Generate Routes
+    # Pattern 2: Generate Routes vs Clarifications
+    if intents.get("generate_routes") and intents.get("clarifications"):
+        return {k: (k == "generate_routes") for k in intents}
+
+    # Pattern 3: Start Nav vs Generate Routes
     elif intents.get("start_nav") and intents.get("generate_routes"):
         return {k: (k == "generate_routes") for k in intents}
     
