@@ -64,6 +64,20 @@ export const startNewSessionIfNeeded = async () => {
   return existingSession;
 };
 
+// Force New Session
+export const forceNewSession = async () => {
+  const newSession = uuid.v4();
+  const now = Date.now().toString();
+
+  await AsyncStorage.multiSet([
+    [SESSION_ID, newSession],
+    [LAST_ACTIVE, now],
+  ]);
+
+  console.log("[Session] forceNewSession created:", newSession);
+  return newSession;
+};
+
 // End Session 
 export const endSession = async () => {
   await AsyncStorage.multiRemove([SESSION_ID, LAST_ACTIVE]);

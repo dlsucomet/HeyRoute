@@ -21,6 +21,7 @@ import Geolocation from "react-native-geolocation-service";
 import { ASR_URL } from "@env";
 import { ActiveVoiceModalProps, ChatMessageType } from "../types/navigation";
 import { speakTTS } from "../utils/tts";
+import supabase from "../supabase-client";
 
 const ASR_ANDROID_URL = ASR_URL;
 
@@ -28,7 +29,7 @@ const ASR_ANDROID_URL = ASR_URL;
 const RECORD_PATH = `${RNFS.CachesDirectoryPath}/user_voice.wav`;
 
 export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
-  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse } = props;
+  const { userId, sessionId, onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse, onCancellation } = props;
 
   useEffect(() => {
     console.log("[ASR] Hook received identity props:", { userId, sessionId });
@@ -41,6 +42,53 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConversationActive, setIsConversationActive] = useState(false);
   const { type, isConnected } = useNetInfo();
+
+  // Load chat history from Supabase on mount
+  useEffect(() => {
+    if (!userId || !sessionId) return;
+    
+    const fetchChatHistory = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("chat_messages")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(100);
+        
+        if (error) {
+          console.error("[ASR] Error fetching chat history:", error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          const chronologicalData = data.reverse();
+          
+          const loadedMessages: ChatMessageType[] = chronologicalData.map(msg => ({
+            id: msg.id,
+            role: msg.role as 'user' | 'system',
+            content: msg.content,
+            timestamp: new Date(msg.created_at),
+            isVoiceInput: msg.role === 'user'
+          }));
+          
+          setMessages(loadedMessages);
+          
+          // Only sync messages belonging to the CURRENT session for the LLM context!
+          conversationHistory.current = chronologicalData
+            .filter(msg => msg.session_id === sessionId)
+            .map(msg => ({
+              role: msg.role === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }));
+        }
+      } catch (err) {
+        console.error("[ASR] Exception fetching chat history:", err);
+      }
+    };
+    
+    fetchChatHistory();
+  }, [userId, sessionId]);
 
   // Refs used to maintain state across render cycles without triggering re-renders
   const conversationActiveRef = useRef(false);
@@ -82,6 +130,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Includes a timeout and metadata headers for analytics.
    */ 
   const stopAndProcessRecording = async () => {
+    let tempUserId = "";
     try {
       console.log("[ASR] stopAndProcessRecording start:", { userId, sessionId });
       if (!userId || !sessionId) {
@@ -103,9 +152,20 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       setIsRecording(false);
       setIsProcessing(true);
 
+      tempUserId = Date.now().toString() + '_temp_user';
+      setMessages(prev => [...prev, {
+        id: tempUserId,
+        role: 'user',
+        content: '...',
+        timestamp: new Date(),
+        isVoiceInput: true,
+        isTyping: true
+      }]);
+
       if (!finalPath) {
         setResult("Recording was interrupted. Please try again.");
         setIsProcessing(false);
+        setMessages(prev => prev.filter(m => m.id !== tempUserId));
         if (conversationActiveRef.current) await startRecording(true);
         return;
       }
@@ -118,6 +178,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
         console.warn("[ASR] Failed to stat audio file:", err);
         setResult("Audio file is missing. Please try again.");
         setIsProcessing(false);
+        setMessages(prev => prev.filter(m => m.id !== tempUserId));
         if (conversationActiveRef.current) await startRecording(true);
         return;
       }
@@ -126,6 +187,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       if (fileStats.size < 200) {
         setResult("Audio was too short. Please try again.");
         setIsProcessing(false);
+        setMessages(prev => prev.filter(m => m.id !== tempUserId));
         if (conversationActiveRef.current) await startRecording(true);
         return;
       }
@@ -213,6 +275,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
       clearTimeout(timeoutId);
       const rawText = await response.text();
+      setMessages(prev => prev.filter(m => m.id !== tempUserId));
       
       if (!response.ok) throw new Error(`Server Error (${response.status}): ${rawText}`);
 
@@ -221,11 +284,16 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
     } catch (err: any) {
       console.error("[ASR] Processing Error:", err);
-      setResult(err.name === 'AbortError' ? "Server timeout, please try again." : `Error: ${err.message}`);
+      const errName = err?.name;
+      const errMsg = err?.message || "Unknown error";
+      const errContent = errName === 'AbortError' ? "Server timeout, please try again." : `Error: ${errMsg}`;
+      
+      setResult(errContent);
+      if (tempUserId) setMessages(prev => prev.filter(m => m.id !== tempUserId));
       setMessages(prev => [...prev, {
         id: Date.now().toString() + '_err',
         role: 'system',
-        content: err.name === 'AbortError' ? "Server timeout, please try again." : `Error: ${err.message}`,
+        content: errContent,
         timestamp: new Date()
       }]);
       setIsRecording(false);
@@ -245,13 +313,23 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     setResult("Thinking...");
     
     // Add user message to UI immediately
-    setMessages(prev => [...prev, {
+    const newUserMessage = {
       id: Date.now().toString() + '_text_user',
       role: 'user',
       content: text,
       timestamp: new Date(),
       isVoiceInput: false
-    }]);
+    };
+    setMessages(prev => [...prev, newUserMessage]);
+    
+    // Save to Supabase
+    supabase.from("chat_messages").insert([{
+      user_id: userId,
+      session_id: sessionId,
+      role: 'user',
+      content: text,
+      created_at: new Date().toISOString()
+    }]).then(res => { if (res.error) console.error("[ASR] Supabase text insert err:", res.error) });
 
     // Add typing indicator for assistant
     const typingId = Date.now().toString() + '_typing';
@@ -265,13 +343,6 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
     try {
       const formData = new FormData();
-      // Dummy audio file to satisfy backend if required, or we could handle it via a new text-only endpoint.
-      // But the current backend process_audio expects a file. 
-      // Actually, looking at main.py, process_audio is NOT in main.py, process_voice_activity is under /api/voice/vad
-      // Wait, let's just use the manual_navigation endpoint or similar, or we can just send empty audio? 
-      // Wait, in main.py, it's /api/voice/vad. But in the hook it calls process_audio. Let me check the backend.
-      // I'll send it via the same process_audio if it supports text, or manual_navigation.
-      // For now, let's keep the UI working and we'll see if the backend handles it.
       
       const response = await fetch(`${ASR_ANDROID_URL}/process_text`, {
         method: "POST",
@@ -310,11 +381,12 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       await handleServerResponse(data, false);
 
     } catch (err: any) {
+      const errMsg = err?.message || "Unknown error";
       setMessages(prev => prev.filter(m => m.id !== typingId));
       setMessages(prev => [...prev, {
         id: Date.now().toString() + '_err',
         role: 'system',
-        content: `Error: ${err.message}`,
+        content: `Error: ${errMsg}`,
         timestamp: new Date()
       }]);
     } finally {
@@ -327,8 +399,8 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Monitors decibel levels to automatically stop recording when the user stops talking.
    */
   const monitorSilence = (timeoutMs = 5000) => {
-    const SILENCE_THRESHOLD = -25; // Decibel threshold for "silence" - slightly more sensitive
-    const SILENCE_DURATION = 1500; // Stop after 1.5s of silence
+    const SILENCE_THRESHOLD = -28; // Decibel threshold for "silence" - slightly more sensitive
+    const SILENCE_DURATION = 1000; // Stop after 1s of silence
     const NO_SPEECH_TIMEOUT = timeoutMs; // Kill recording if no speech detected
 
     let lastLoudTime = Date.now();
@@ -411,18 +483,41 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (enhanced) {
       conversationHistory.current.push({ role: "user", content: enhanced });
       if (isVoice) {
-        setMessages(prev => [...prev, {
+        const newUserMessage = {
           id: Date.now().toString() + '_user',
           role: 'user',
           content: enhanced,
           timestamp: new Date(),
           isVoiceInput: true
-        }]);
+        };
+        setMessages(prev => [...prev, newUserMessage]);
+        
+        // Save user message to Supabase
+        if (userId && sessionId) {
+          supabase.from("chat_messages").insert([{
+            user_id: userId,
+            session_id: sessionId,
+            role: 'user',
+            content: enhanced,
+            created_at: new Date().toISOString()
+          }]).then(res => { if (res.error) console.error("[ASR] Supabase user insert err:", res.error) });
+        }
       }
     }
 
-    if (responseText && !isErrorResponse) {
+    if (responseText) {
       conversationHistory.current.push({ role: "assistant", content: responseText });
+      
+      // Save assistant message to Supabase
+      if (userId && sessionId) {
+        supabase.from("chat_messages").insert([{
+          user_id: userId,
+          session_id: sessionId,
+          role: 'assistant',
+          content: responseText,
+          created_at: new Date(Date.now() + 500).toISOString()
+        }]).then(res => { if (res.error) console.error("[ASR] Supabase assistant insert err:", res.error) });
+      }
       
       const typingId = Date.now().toString() + '_typing';
       setMessages(prev => [...prev, {
@@ -458,9 +553,26 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (onResponse) onResponse(data);
 
     // Navigation Trigger
-    if (heyrouteData?.navigation_started || heyrouteData?.navigation_started === false) {
-      await endConversation();
-      onNavigationTriggered?.(heyrouteData);
+    if (heyrouteData?.navigation_started === true) {
+      setTimeout(async () => {
+        await endConversation();
+        onNavigationTriggered?.(heyrouteData);
+      }, 1500);
+      return;
+    }
+
+    // Cancellation Trigger
+    if (heyrouteData?.cancellation === true) {
+      console.log("[ASR] Cancellation intent detected.");
+      
+      if (responseText && !isErrorResponse) {
+        playTTS(responseText).catch(console.error);
+      }
+
+      setTimeout(async () => {
+        await endConversation();
+        onCancellation?.();
+      }, 3000); // Wait 3 seconds for TTS and reading
       return;
     }
 
@@ -468,16 +580,17 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (heyrouteData?.route_preview) {
       console.log("[ASR] Route preview available.");
 
-      // Tell the next screen to listen, and what to say!
+      // Tell the next screen to listen, but we play the TTS immediately here!
       heyrouteData.continue_listening = true;
       if (responseText && !isErrorResponse) {
-        heyrouteData.route_preview_tts = responseText;
+        heyrouteData.route_preview_tts = null; // Prevent RoutePreview from playing it again
+        playTTS(responseText).catch(console.error);
       }
 
-      await endConversation(true);
-      
-      // Trigger the navigation UI update immediately
-      onRoutePreview?.(heyrouteData);
+      setTimeout(async () => {
+        await endConversation(true);
+        onRoutePreview?.(heyrouteData);
+      }, 5000); // Wait 5 seconds so the user can read the chat
       return;
     }
 
@@ -494,9 +607,17 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     // Loop or End
     if (data?.conversation_ended || !conversationActiveRef.current) {
       await endConversation();
+      if (data?.conversation_ended) {
+        onCancellation?.();
+      }
     } else {
       setResult("Your turn...");
-      await startRecording(true);
+      // Add a slight 500ms delay before recording again to let any room echo fade
+      setTimeout(async () => {
+        if (conversationActiveRef.current) {
+          await startRecording(true);
+        }
+      }, 500);
     }
   };
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { NativeModules, NativeEventEmitter, Platform, DeviceEventEmitter } from 'react-native';
 import { customEvent } from 'vexo-analytics';
 
 const { WakeWordModule } = NativeModules;
@@ -61,10 +61,11 @@ export const useWakeWord = ({
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    let isTtsPlaying = false;
 
     const toggleListening = () => {
       try {
-        if (isRecording || isProcessing || vadMode) {
+        if (isRecording || isProcessing || vadMode || isTtsPlaying) {
           if (isListeningRef.current) {
             console.log("[WakeWord] Pausing listener — app is busy.");
             WakeWordModule.stopListening();
@@ -92,7 +93,13 @@ export const useWakeWord = ({
 
     toggleListening();
     
+    const ttsSub = DeviceEventEmitter.addListener('tts_state_changed', (isPlaying) => {
+      isTtsPlaying = isPlaying;
+      toggleListening();
+    });
+    
     return () => {
+      ttsSub.remove();
       if (timeoutId) clearTimeout(timeoutId);
     };
   }, [isRecording, isProcessing, vadMode, visible]);

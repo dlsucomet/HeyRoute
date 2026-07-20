@@ -12,17 +12,17 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, Pressable, Platform, Text, Keyboard, ActivityIndicator, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
-import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native"
+import { useNavigation, useRoute, useIsFocused, useFocusEffect } from "@react-navigation/native"
 import { customEvent, identifyDevice } from 'vexo-analytics';
 
-import MapBackground from "../components/map-background";
+import DirectionsCard from "../components/directions-card";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
-import DirectionsCard from "../components/directions-card";
+import MapboxMapView from "../components/mapbox-map-view";
 import supabase from "../supabase-client";
 import { Colors } from "../theme/colors";
 import { useWakeWord } from "../hooks/useWakeWord";
-import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
+import { initDeviceId, startNewSessionIfNeeded, forceNewSession } from "../utils/session";
 
 import { PermissionsAndroid } from 'react-native';
 
@@ -44,7 +44,9 @@ const HomeScreen = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [showHelpPanel, setShowHelpPanel] = useState(false);
+  const [openForHistory, setOpenForHistory] = useState(false);
   const [isHelpToggled, setIsHelpToggled] = useState(false);
+  const [micGranted, setMicGranted] = useState(false);
 
   const [isRecordingInModal, setIsRecordingInModal] = useState(false);
   const [isProcessingInModal, setIsProcessingInModal] = useState(false);
@@ -57,7 +59,6 @@ const HomeScreen = () => {
 
   const [autoTriggerNav, setAutoTriggerNav] = useState(false);
   const [fromHistoryNav, setFromHistoryNav] = useState(false);
-  const [micGranted, setMicGranted] = useState(false);
 
   // Control refs for passing auto-start triggers to the Modal
   const shouldAutoStartRecording = useRef(false);
@@ -110,30 +111,58 @@ const HomeScreen = () => {
   useEffect(() => {
     const checkPermissions = async () => {
       if (Platform.OS === 'android') {
-        const hasMic = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
-        const hasLoc = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-        
-        if (!hasMic || !hasLoc) {
-          const statuses = await PermissionsAndroid.requestMultiple([
-            PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
-          ]);
-          if (statuses[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED) {
+        try {
+          const hasMic = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
+          const hasLoc = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+          
+          if (!hasMic || !hasLoc) {
+            const statuses = await PermissionsAndroid.requestMultiple([
+              PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+              PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+            ]);
+            if (statuses[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === PermissionsAndroid.RESULTS.GRANTED) {
+              setMicGranted(true);
+            }
+          } else {
             setMicGranted(true);
           }
-        } else {
-          setMicGranted(true);
+        } catch (err) {
+          console.warn("[HomeScreen] Permission check error:", err);
         }
       } else {
         setMicGranted(true); // iOS permissions are handled natively by Info.plist
       }
     };
-    checkPermissions();
+    
+    // Slight delay to ensure the Activity is attached before requesting permissions
+    const timer = setTimeout(() => {
+      checkPermissions();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     isFirstRender.current = false;
   }, []);
+
+  /**
+   * Reset session when returning from a cancelled navigation or when explicitly requested
+   */
+  useFocusEffect(
+    React.useCallback(() => {
+      // Whenever HomeScreen gains focus after being unmounted/unfocused (e.g. from Navigation)
+      // we check if we need to reset the route and generate a new session.
+      if (route.params?.resetSession) {
+        forceNewSession().then(newSession => {
+          setSessionId(newSession);
+        });
+        setStart("");
+        setDestination("");
+        navigation.setParams({ resetSession: undefined });
+      }
+    }, [route.params?.resetSession])
+  );
 
   /**
    * When arriving from the History Screen, pre-populate the navigation state 
@@ -273,24 +302,9 @@ const HomeScreen = () => {
       return;
     }
 
-    // Pass the parameters directly to the Navigation Screen
-    navigation.navigate("NavigationScreen", {
-      start: primaryRoute.start,
-      destination: primaryRoute.end,
-      full_geometry: primaryRoute.full_geometry, 
-      alternative_routes: alternatives,
-      userId: userId,
-      sessionId: heyrouteData.session_id,
-      routeDuration: primaryRoute.duration,
-      routeDistance: primaryRoute.distance,
-      routeVia: primaryRoute.via,
-      stepsInstructions: primaryRoute.steps_instructions,
-      turnIndices: primaryRoute.turn_indices,
-      fromHistory: false,
-      routeOption: preferences.route_option,
-      avoidList: preferences.avoid_list,
-      majorRoad: preferences.major_road
-    });
+    // Instead of jumping directly to NavigationScreen, 
+    // we force a route preview to ensure the user gets a confirmation step.
+    handleRoutePreview(heyrouteData);
   };
 
   /**
@@ -320,10 +334,20 @@ const HomeScreen = () => {
 
   const handleVoicePress = () => {
     if (isModalVisible) return;
+    setOpenForHistory(false);
     setIsModalVisible(true);
   };
 
-  const closeModal = () => setIsModalVisible(false);
+  const handleChatHistoryPress = () => {
+    if (isModalVisible) return;
+    setOpenForHistory(true);
+    setIsModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+    setOpenForHistory(false);
+  };
 
   /**
    * Sets the transcribed text to display in the UI and trigger processing states, and logs the performance of the AI pipeline.
@@ -339,6 +363,18 @@ const HomeScreen = () => {
     }
     setTranscribedText(text);
     setIsProcessing(true);
+  };
+
+  /**
+   * Called by the voice assistant when the user explicitly cancels a trip.
+   * This forces a global reset by backing out to the Home screen and clearing the session.
+   */
+  const handleCancellation = async () => {
+    setIsModalVisible(false);
+    setOpenForHistory(false);
+    const newSessionId = await forceNewSession();
+    setSessionId(newSessionId);
+    navigation.popToTop(); // Forcefully strip away RoutePreview and NavigationScreen
   };
 
   // Auto-hide the "Manual Input" help hint after 1 second
@@ -416,10 +452,12 @@ const HomeScreen = () => {
         userId={userId}
         sessionId={sessionId}
         visible={isModalVisible}
+        openForHistory={openForHistory}
         onClose={closeModal}
         onTranscriptionComplete={handleTranscription}
         onNavigationTriggered={handleNavigationTriggered}
         onRoutePreview={handleRoutePreview}
+        onCancellation={handleCancellation}
         autoStartRecording={shouldAutoStartRecording}
         autoStartVadMode={shouldAutoStartVadMode}
         onRecordingStateChange={setIsRecordingInModal}
@@ -427,32 +465,15 @@ const HomeScreen = () => {
         onVadModeChange={setVadModeActive}
       />
 
-      {showHelpPanel && (
-        <View style={styles.helpPanelContainer}>
-          <Text style={styles.helpPanelText}> Enable Manual Input </Text>
-          <Switch
-            trackColor={{ false: Colors.textMuted, true: Colors.navy }}
-            thumbColor={Colors.cream}
-            onValueChange={(val) => {
-              setIsHelpToggled(val);
-              if (!isFirstRender.current) {
-                customEvent('Interaction_Method', { type: 'manual_input_toggled', enabled: val });
-              }
-            }}
-            value={isHelpToggled}
-          />
-        </View>
-      )}
-
       {!keyboardVisible && (
         <Pressable 
           style={({ pressed }) => [
             styles.helpIconContainer,
             pressed && { opacity: 0.7 }
           ]}
-          onPress={() => setShowHelpPanel(!showHelpPanel)}
+          onPress={handleChatHistoryPress}
         >
-          <MaterialIcons name="keyboard-alt" color={Colors.navy} size={26} />
+          <MaterialIcons name="chat" color={Colors.navy} size={26} />
         </Pressable>
       )}
     </SafeAreaView>

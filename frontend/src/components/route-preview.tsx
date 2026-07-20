@@ -13,6 +13,7 @@ import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from "
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RouteProp, useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Geolocation from "react-native-geolocation-service";
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
@@ -151,11 +152,7 @@ const RoutePreviewScreen = () => {
     setNavSdkEta(eta);
     if (!hasAnnouncedEtaRef.current && distanceKm !== undefined) {
       hasAnnouncedEtaRef.current = true;
-      const speechText = `The route is approximately ${distanceKm} kilometers and will take around ${eta}.`;
-      console.log(`${LOG_PREFIX} Announcing route ETA:`, speechText);
-      speakTTS(speechText).catch((err) => {
-        console.error(`${LOG_PREFIX} TTS announcement error:`, err);
-      });
+      console.log(`${LOG_PREFIX} Route ETA updated:`, eta, "Distance:", distanceKm);
     }
   };
 

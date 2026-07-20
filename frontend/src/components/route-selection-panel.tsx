@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useRef } from "react";
+import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { Colors } from "../theme/colors";
 

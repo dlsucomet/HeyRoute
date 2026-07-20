@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from '../../theme/colors';
 import { ChatMessageType } from '../../types/navigation';
 
@@ -71,7 +71,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
     <View style={[styles.container, isUser ? styles.userContainer : styles.assistantContainer]}>
       {!isUser && (
         <View style={styles.assistantAvatar}>
-          <MaterialIcons name="assistant-navigation" size={16} color={Colors.textOnDark} />
+          <Icon name="assistant-navigation" size={16} color={Colors.textOnDark} />
         </View>
       )}
       
@@ -95,7 +95,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
         <View style={[styles.footer, isUser ? styles.footerUser : styles.footerAssistant]}>
           <Text style={styles.timeText}>{formatTime(message.timestamp)}</Text>
           {isUser && message.isVoiceInput && (
-            <MaterialIcons name="mic" size={12} color={Colors.textMuted} style={styles.micIcon} />
+            <Icon name="mic" size={12} color={Colors.textMuted} style={styles.micIcon} />
           )}
         </View>
       </View>

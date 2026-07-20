@@ -3,14 +3,14 @@ import {
   View, Text, StyleSheet, Pressable, TextInput, 
   FlatList, KeyboardAvoidingView, Platform, Animated, LayoutAnimation 
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from '../../theme/colors';
 import { useVoiceAssistant } from '../../hooks/useVoiceAssistant';
 import { ActiveVoiceModalProps, ChatMessageType } from '../../types/navigation';
 import { ChatMessage } from './ChatMessage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }) => {
+export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; headlessMode?: boolean }) => {
   const { 
     isVisible, onClose, userId, sessionId, onTranscriptionComplete, 
     onNavigationTriggered, onRoutePreview, onResponse, autoStartVadMode
@@ -49,14 +49,22 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }
     }
   }, [isRecording]);
 
+  const startConversationRef = useRef(startConversation);
+  
+  useEffect(() => {
+    startConversationRef.current = startConversation;
+  }, [startConversation]);
+
   useEffect(() => {
     if (isVisible) {
       if (autoStartVadMode?.current) {
         autoStartVadMode.current = false;
-        setTimeout(() => startConversation(), 600);
+      }
+      if (!props.openForHistory) {
+        setTimeout(() => startConversationRef.current(), 600);
       }
     }
-  }, [isVisible]);
+  }, [isVisible, props.openForHistory]);
 
   const handleClose = async () => {
     await whenClosing();
@@ -79,6 +87,10 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }
     }
   }, [messages.length, messages[messages.length - 1]?.isTyping]);
 
+  if (props.headlessMode) {
+    return null;
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -88,7 +100,7 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }
         {/* Header */}
         <View style={styles.header}>
           <Pressable onPress={handleClose} style={styles.closeButton}>
-            <MaterialIcons name="close" size={26} color={Colors.navy} />
+            <Icon name="close" size={26} color={Colors.navy} />
           </Pressable>
           <Text style={styles.headerTitle}>HeyRoute</Text>
           <View style={styles.headerRight} />
@@ -120,9 +132,9 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }
               onSubmitEditing={handleSendText}
             />
             {inputText.trim().length > 0 && (
-              <Pressable onPress={handleSendText} style={styles.sendButton}>
-                <MaterialIcons name="send" size={24} color={Colors.teal} />
-              </Pressable>
+              <Animated.View style={[styles.sendButton, { transform: [{ scale: pulseAnim }] }]}>
+                <Icon name="send" size={24} color={Colors.teal} />
+              </Animated.View>
             )}
           </View>
 
@@ -132,17 +144,13 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean }
               disabled={isProcessing}
               style={styles.micWrapper}
             >
-              <Animated.View style={[
-                styles.micButton, 
-                isRecording && styles.micRecording,
-                { transform: [{ scale: pulseAnim }] }
-              ]}>
-                {isRecording ? (
-                  <MaterialIcons name="stop" size={28} color={Colors.textOnDark} />
-                ) : (
-                  <MaterialIcons name="mic" size={28} color={Colors.textOnDark} />
-                )}
-              </Animated.View>
+              <Animated.View style={[styles.micButton, isRecording && styles.micRecording, { transform: [{ scale: pulseAnim }] }]}>
+              {isRecording ? (
+                <Icon name="stop" size={28} color={Colors.textOnDark} />
+              ) : (
+                <Icon name="mic" size={28} color={Colors.textOnDark} />
+              )}
+            </Animated.View>
             </Pressable>
           )}
         </View>

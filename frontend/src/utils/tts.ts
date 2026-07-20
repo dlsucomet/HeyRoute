@@ -2,6 +2,7 @@ import { Sound } from "react-native-nitro-sound";
 import RNFS from "react-native-fs";
 import { Buffer } from "buffer";
 import { ASR_URL } from "@env";
+import { DeviceEventEmitter } from "react-native";
 
 /**
  * Fetches MP3 audio from the ASR TTS engine and plays it immediately.
@@ -24,6 +25,8 @@ export const speakTTS = async (text: string): Promise<void> => {
     // Save buffer to file then play
     await RNFS.writeFile(path, Buffer.from(arrayBuffer).toString("base64"), "base64");
     
+    DeviceEventEmitter.emit("tts_state_changed", true);
+
     await new Promise<void>((resolve, reject) => {
       Sound.addPlaybackEndListener(() => {
         Sound.removePlaybackEndListener();
@@ -38,5 +41,7 @@ export const speakTTS = async (text: string): Promise<void> => {
   } catch (err) {
     console.error("[TTS Utility] Error playing TTS:", err);
     throw err;
+  } finally {
+    DeviceEventEmitter.emit("tts_state_changed", false);
   }
 };

@@ -5,10 +5,10 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 import MapboxNavigation from '@roberto497/react-native-mapbox-navigation';
 import ActiveVoiceModal from "../components/active-voice-modal";
-import MapboxNavigation from '@roberto497/react-native-mapbox-navigation';
-import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
 import { Colors } from "../theme/colors";
+
+const NavigationScreen = () => {
   const navigation = useNavigation() as any;
   const route = useRoute() as any;
   const isFocused = useIsFocused();
