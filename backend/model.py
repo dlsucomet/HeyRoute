@@ -228,8 +228,19 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
             intent_mode = "NAVIGATION"
         else:
             intent_mode = "SETUP"
-        intents, intent_detect_latency = await detect_intent(user_input, intent_mode, state.conversation_history, state.semantic_context, user_id, session_id)
-        intents = await resolve_collisions(intents)
+            
+        # Hardcoded fallback for obvious start-nav phrases
+        start_nav_phrases = ["let's go", "lets go", "start navigation", "start nav", "begin navigation", "drive", "start now"]
+        normalized_input = user_input.lower().strip()
+        
+        if state.route_created and state.primary_route and any(phrase in normalized_input for phrase in start_nav_phrases):
+            intents = {k: False for k in ["clarifications", "cancellation", "generate_routes", "trip_changes", "start_nav", "request_alternates", "select_route"]}
+            intents["start_nav"] = True
+            intent_detect_latency = 0
+            print(f"[INTENT] Hardcoded fallback triggered start_nav for: {user_input}")
+        else:
+            intents, intent_detect_latency = await detect_intent(user_input, intent_mode, state.conversation_history, state.semantic_context, user_id, session_id)
+            intents = await resolve_collisions(intents)
 
         # ---------- Handle Clarifications ----------
         if intents.get("clarifications"):

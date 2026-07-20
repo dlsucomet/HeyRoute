@@ -70,7 +70,7 @@ const ActiveVoiceModal = ({
         setTimeout(() => {
           console.log("[Modal] setTimeout fired, calling startConversation...");
           startConversation();
-        }, 300);
+        }, 600);
       } else {
         console.log("[Modal] Modal opened manually, not auto-starting.");
       }

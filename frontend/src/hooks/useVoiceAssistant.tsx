@@ -232,14 +232,21 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Voice Activity Detection (VAD) logic.
    * Monitors decibel levels to automatically stop recording when the user stops talking.
    */
-  const monitorSilence = () => {
-    const SILENCE_THRESHOLD = -20; // Decibel threshold for "silence"
+  const monitorSilence = (timeoutMs = 5000) => {
+    const SILENCE_THRESHOLD = -25; // Decibel threshold for "silence" - slightly more sensitive
     const SILENCE_DURATION = 1500; // Stop after 1.5s of silence
-    const NO_SPEECH_TIMEOUT = 5000; // Kill recording if no speech detected in first 5s
+    const NO_SPEECH_TIMEOUT = timeoutMs; // Kill recording if no speech detected
 
     let lastLoudTime = Date.now();
     let startTime = Date.now();
     let hasSpoken = false;
+
+    // Failsafe timeout in case native events stop firing
+    const failsafeTimeout = setTimeout(() => {
+      console.log("[ASR] VAD: Failsafe triggered. Stopping recording.");
+      Sound.removeRecordBackListener();
+      stopAndProcessRecording();
+    }, NO_SPEECH_TIMEOUT + 2000);
 
     Sound.addRecordBackListener((e) => {
       if (e.currentMetering !== undefined) {
@@ -249,11 +256,13 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
         } else if (hasSpoken && (Date.now() - lastLoudTime > SILENCE_DURATION)) {
           // User finished speaking
           console.log("[ASR] VAD: Silence detected after speech, stopping...");
+          clearTimeout(failsafeTimeout);
           Sound.removeRecordBackListener();
           stopAndProcessRecording();
         } else if (!hasSpoken && (Date.now() - startTime > NO_SPEECH_TIMEOUT)) {
           // User never started speaking
-          console.log("[ASR] VAD: No initial speech detected after 5s, stopping...");
+          console.log("[ASR] VAD: No initial speech detected, stopping...");
+          clearTimeout(failsafeTimeout);
           Sound.removeRecordBackListener();
           stopAndProcessRecording();
         }
@@ -264,9 +273,13 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   /**
    * Starts the audio recording process.
    */
-  const startRecording = async (useVad: boolean = true) => {
+  const startRecording = async (useVad: boolean = true, extendedTimeout: boolean = false) => {
     try {
       setResult("Listening...");
+      
+      // Stop any TTS playing to release audio subsystem before starting mic
+      try { await Sound.stopPlayer(); } catch (e) {}
+      await new Promise<void>(resolve => setTimeout(resolve, 300));
       
       // Forcefully pause WakeWord listener to free up the microphone
       try { WakeWordModule.stopListening(); } catch (e) {}
@@ -276,7 +289,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
       if (useVad) {
         Sound.setSubscriptionDuration(100);
-        monitorSilence();
+        monitorSilence(extendedTimeout ? 8000 : 5000);
       } else {
         setResult("Recording...");
       }
@@ -384,7 +397,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
     // Slight delay to allow UI to settle before opening mic
     await new Promise<void>(resolve => setTimeout(() => resolve(), 500));
-    await startRecording(true);
+    await startRecording(true, true); // Use extended timeout for conversational starts
   };
 
   /**

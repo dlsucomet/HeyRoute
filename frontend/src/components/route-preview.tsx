@@ -337,6 +337,7 @@ const RoutePreviewScreen = () => {
   const [isProcessingInModal, setIsProcessingInModal] = useState(false);
   const [vadModeActive, setVadModeActive] = useState(false);
   const [wakeWordActive, setWakeWordActive] = useState(false);
+  const [isAutoStarting, setIsAutoStarting] = useState(false);
 
   const shouldAutoStartVadMode = useRef(false);
   const shouldAutoStartRecording = useRef(false);
@@ -344,7 +345,7 @@ const RoutePreviewScreen = () => {
   /**
    * Constantly listens for "Hey Route" only when the screen is focused and the modal isn't already open.
    */
-  const wakeWordVisible = isFocused && !isModalVisible;
+  const wakeWordVisible = isFocused && !isModalVisible && !isAutoStarting;
 
   useWakeWord({
     visible: wakeWordVisible,
@@ -364,18 +365,27 @@ const RoutePreviewScreen = () => {
   useEffect(() => {
     if (route.params?.autoStartMicrophone) {
       console.log(`${LOG_PREFIX} autoStartMicrophone is true!`);
+      setIsAutoStarting(true);
       
       const startMic = () => {
         shouldAutoStartVadMode.current = true;
         shouldAutoStartRecording.current = true;
         setIsModalVisible(true);
+        setIsAutoStarting(false);
       };
 
       if (route.params?.routePreviewTts) {
         hasAnnouncedEtaRef.current = true; // Prevent ETA TTS overlap
         console.log(`${LOG_PREFIX} Playing route preview TTS before starting mic...`);
         speakTTS(route.params.routePreviewTts)
-          .then(() => startMic())
+          .then(async () => {
+            try {
+              const { Sound } = require("react-native-nitro-sound");
+              await Sound.stopPlayer();
+            } catch (e) {}
+            await new Promise(resolve => setTimeout(resolve, 500));
+            startMic();
+          })
           .catch(() => startMic());
       } else {
         startMic();
