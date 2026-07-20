@@ -12,9 +12,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, Pressable, useWindowDimensions, Image, Keyboard, FlatList, Alert } from "react-native";
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { GOOGLE_MAPS_API_KEY } from "@env";
-
-import supabase from "../supabase-client";
+import { GOOGLE_MAPS_API_KEY, ASR_URL } from "@env";
 import { useManualInput } from "../hooks/useManualInput";
 import { DirectionsCardProps } from "../types/navigation";
 import SaveLocationModal from "./save-location-modal";
@@ -61,15 +59,12 @@ const DirectionsCard = ({ userId, onSetStart, onSetDestination, onSetPreference,
     const fetchSavedLocations = async () => {
       if (!userId) return;
       try {
-        const { data, error } = await supabase
-          .from('places')
-          .select('location') // Only need the location string to compare
-          .eq('user_id', userId);
-
-        if (error) throw error;
+        const response = await fetch(`${ASR_URL}/api/places/${userId}`);
+        if (!response.ok) throw new Error("Failed to fetch locations");
+        const data = await response.json();
         setSavedLocations(data || []);
       } catch (err) {
-        console.error("Error fetching saved locations for bookmark status:", err);
+        console.warn("Error fetching saved locations for bookmark status:", err.message);
       }
     };
 
@@ -115,18 +110,18 @@ const DirectionsCard = ({ userId, onSetStart, onSetDestination, onSetPreference,
             style: "destructive",
             onPress: async () => {
               try {
-                const { error } = await supabase
-                  .from('places')
-                  .delete()
-                  .match({ user_id: userId, location: locationDescription });
-
-                if (error) throw error;
-
+                // Find the specific item ID
+                const itemToDelete = savedLocations.find(saved => saved.location === locationDescription);
+                if (itemToDelete && itemToDelete.id) {
+                  const response = await fetch(`${ASR_URL}/api/places/${itemToDelete.id}`, { method: 'DELETE' });
+                  if (!response.ok) throw new Error("Failed to remove location");
+                }
+                
                 // Update local state to immediately turn the icon back to outline
                 setSavedLocations(prev => prev.filter(item => item.location !== locationDescription));
-              } catch (err) {
-                console.error("Error removing location:", err);
-                Alert.alert("Error", "Could not remove the location.");
+              } catch (error) {
+                console.warn("Error deleting location:", error.message);
+                Alert.alert("Error", "Could not delete location. Please try again.");
               }
             }
           }
@@ -168,20 +163,25 @@ const DirectionsCard = ({ userId, onSetStart, onSetDestination, onSetPreference,
       if (data.result && data.result.geometry) {
         const { lat, lng } = data.result.geometry.location;
         
-        const { error: supabaseError } = await supabase.from('places').insert([
-          { 
-            user_id: userId, 
-            label: category,
-            location: originalSuggestion.description, 
-            latitude: lat,
-            longitude: lng
-          }
-        ]);
+        const payload = { 
+          user_id: userId, 
+          label: category,
+          location: originalSuggestion.description, 
+          latitude: lat,
+          longitude: lng
+        };
 
-        if (supabaseError) throw supabaseError;
+        const saveResponse = await fetch(`${ASR_URL}/api/places/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!saveResponse.ok) throw new Error("Failed to save location");
+        const savedPlace = await saveResponse.json();
         
         // Update local state immediately so the icon reflects the change
-        setSavedLocations(prev => [...prev, { location: originalSuggestion.description }]);
+        setSavedLocations(prev => [...prev, savedPlace]);
         Alert.alert("Success", "Location saved!");
       }
     } catch (err) {

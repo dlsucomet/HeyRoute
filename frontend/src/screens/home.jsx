@@ -20,8 +20,8 @@ import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
 import MapboxMapView from "../components/mapbox-map-view";
 import { useWakeWord } from "../hooks/useWakeWord";
-import supabase from '../supabase-client';
 import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
+import { ASR_URL } from "@env";
 
 import { PermissionsAndroid } from 'react-native';
 
@@ -70,10 +70,9 @@ const HomeScreen = () => {
     const fetchId = async () => {
       console.log("[Home] Bootstrapping user/device/session IDs...");
 
-      const [resolvedDeviceId, resolvedSessionId, authResult] = await Promise.all([
+      const [resolvedDeviceId, resolvedSessionId] = await Promise.all([
         initDeviceId(),
         startNewSessionIfNeeded(),
-        supabase.auth.getUser(),
       ]);
 
       console.log("[Home] initDeviceId resolved:", resolvedDeviceId);
@@ -87,14 +86,9 @@ const HomeScreen = () => {
         setSessionId(resolvedSessionId);
       }
 
-      const { data: { user } } = authResult;
-      if (user) {
-        console.log("[Home] supabase auth user resolved:", user.id);
-        setUserId(user.id);
-        identifyDevice(user.id);
-      } else {
-        console.warn("[Home] No authenticated user resolved from Supabase.");
-      }
+      const hardcodedUUID = "11111111-1111-1111-1111-111111111111";
+      setUserId(hardcodedUUID);
+      identifyDevice(hardcodedUUID);
     };
     fetchId();
   }, []);
@@ -193,23 +187,19 @@ const HomeScreen = () => {
     
     // Save the discovery to the history database
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        let profileUserId = userId;
-        if (!profileUserId) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("user_id")
-            .eq("email", user.email)
-            .single();
-          profileUserId = profile?.user_id || user.id;
-        }
-        await supabase.from("trip_history").insert({
-          user_id: profileUserId,
-          origin_name: "Current Location",
-          destination_name: destinationText,
-        });
-      }
+      const payload = {
+        user_id: userId || "11111111-1111-1111-1111-111111111111",
+        origin_coords: [],
+        destination_coords: [],
+        origin_name: "Current Location",
+        destination_name: destinationText,
+      };
+
+      await fetch(`${ASR_URL}/api/history/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
     } catch {}
   };
 

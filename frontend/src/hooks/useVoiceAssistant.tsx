@@ -185,7 +185,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
 
       // Prepare Multipart form data for the ASR server
       const formData = new FormData();
-      formData.append('file', {
+      formData.append('audio_file', {
         uri: Platform.OS === 'android' ? `file://${finalPath}` : finalPath,
         type: 'audio/wav',
         name: 'speech.wav',
@@ -196,7 +196,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(`${ASR_ANDROID_URL}/process_audio`, {
+      const response = await fetch(`${ASR_ANDROID_URL}/api/voice/vad`, {
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -219,7 +219,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       await handleServerResponse(data);
 
     } catch (err: any) {
-      console.error("[ASR] Processing Error:", err);
+      console.warn("[ASR] Processing Error:", err.message);
       setResult(err.name === 'AbortError' ? "Server timeout, please try again." : `Error: ${err.message}`);
       setIsRecording(false);
       await endConversation();
@@ -233,8 +233,8 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Monitors decibel levels to automatically stop recording when the user stops talking.
    */
   const monitorSilence = () => {
-    const SILENCE_THRESHOLD = -20; // Decibel threshold for "silence"
-    const SILENCE_DURATION = 1500; // Stop after 1.5s of silence
+    const SILENCE_THRESHOLD = -40; // Decibel threshold for "silence"
+    const SILENCE_DURATION = 2000; // Stop after 2.0s of silence
     const NO_SPEECH_TIMEOUT = 5000; // Kill recording if no speech detected in first 5s
 
     let lastLoudTime = Date.now();

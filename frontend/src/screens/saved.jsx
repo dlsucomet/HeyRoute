@@ -13,12 +13,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from "@react-navigation/native"; 
 
-import supabase from "../supabase-client";
+import { ASR_URL } from "@env";
 import NavBar from "../components/navbar";
+
+// Hardcoded UUID for bypass authentication
+const HARDCODED_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 const SavedScreen = () => {
   const navigation = useNavigation(); // Initialize navigation
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(HARDCODED_USER_ID);
   const [savedData, setSavedData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,24 +34,17 @@ const SavedScreen = () => {
    */
   const fetchUserLocations = async () => {
     try {
-      const { data: authUser } = await supabase.auth.getUser();
+      const response = await fetch(`${ASR_URL}/api/places/${HARDCODED_USER_ID}`);
+      if (!response.ok) throw new Error("Failed to fetch places");
+      
+      const locations = await response.json();
+      console.log("[Saved] Fetched Locations:", locations);
 
-      if (authUser?.user) {
-        setUserId(authUser.user.id);
-
-        const { data: locations, error } = await supabase
-          .from('places')
-          .select('*')
-          .eq('user_id', authUser.user.id)
-          .order('created_at', { ascending: false });
-        
-        console.log("[Saved] Fetched Locations:", locations);
-
-        if (error) throw error;
-        setSavedData(locations || []);
-      }
+      // Sort by descending id (since we don't have created_at descending from the API yet)
+      const sortedLocations = (locations || []).sort((a, b) => b.id - a.id);
+      setSavedData(sortedLocations);
     } catch (error) {
-      console.error("Error fetching saved locations:", error.message);
+      console.warn("Error fetching saved locations:", error.message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -70,13 +66,13 @@ const SavedScreen = () => {
    */
   const handleRouteLaunch = (item) => {
     navigation.navigate("Home", { 
-      initialDestination: item.location, 
+      initialDestination: item, 
       autoTrigger: true 
     });
   };
 
   /**
-   * Removes a location from both the local UI state and the Supabase database after user confirmation.
+   * Removes a location from both the local UI state and the backend database after user confirmation.
    */
   const handleDelete = (id) => {
     Alert.alert(
@@ -89,13 +85,13 @@ const SavedScreen = () => {
           style: "destructive",
           onPress: async () => {
             setSavedData((prevData) => prevData.filter((item) => item.id !== id));
-            const { error } = await supabase.from('places').delete().eq('id', id);
-
-            if (error) {
-              console.error("[Saved] Error deleting item:", error.message);
-              Alert.alert("Error", "Could not delete the location. Please try again.");
-            } else {
+            try {
+              const response = await fetch(`${ASR_URL}/api/places/${id}`, { method: 'DELETE' });
+              if (!response.ok) throw new Error("Failed to delete place");
               Alert.alert("Success", "Location deleted!");
+            } catch (error) {
+              console.warn("[Saved] Error deleting item:", error.message);
+              Alert.alert("Error", "Could not delete the location. Please try again.");
             }
           },
         },
@@ -117,7 +113,7 @@ const SavedScreen = () => {
   };
 
   /**
-   * Persists the new label to Supabase.
+   * Persists the new label to backend.
    */
   const handleSaveEdit = async (id) => {
     if (!editLabel.trim()) {
@@ -125,29 +121,30 @@ const SavedScreen = () => {
       return;
     }
 
-    // Update the database
-    const { error } = await supabase
-      .from('places')
-      .update({ label: editLabel })
-      .eq('id', id);
+    try {
+      // Update the database
+      const response = await fetch(`${ASR_URL}/api/places/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: editLabel })
+      });
+      if (!response.ok) throw new Error("Failed to update place");
 
-    if (error) {
-      console.error("[Saved] Error updating item:", error.message);
+      // Update the UI state
+      setSavedData((prevData) =>
+        prevData.map((item) =>
+          item.id === id ? { ...item, label: editLabel } : item
+        )
+      );
+
+      // Reset edit state
+      setEditingId(null);
+      setEditLabel("");
+      Alert.alert("Success", "Location renamed successfully!");
+    } catch (error) {
+      console.warn("[Saved] Error updating item:", error.message);
       Alert.alert("Error", "Could not update the location name.");
-      return;
     }
-
-    // Update the UI state
-    setSavedData((prevData) =>
-      prevData.map((item) =>
-        item.id === id ? { ...item, label: editLabel } : item
-      )
-    );
-
-    // Reset edit state
-    setEditingId(null);
-    setEditLabel("");
-    Alert.alert("Success", "Location renamed successfully!");
   };
 
   return (

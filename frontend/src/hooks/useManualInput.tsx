@@ -243,7 +243,7 @@ export const useManualInput = (props: DirectionsCardProps) => {
     const payload = { user_id: userId, start, destination, preference };
 
     try {
-      const response = await fetch(`${ASR_URL}/manual_navigation`, {
+      const response = await fetch(`${ASR_URL}/api/navigation/manual_navigation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ payload }),

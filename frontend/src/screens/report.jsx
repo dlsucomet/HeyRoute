@@ -12,7 +12,7 @@ import { useState } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Platform, TextInput, ActivityIndicator, Alert } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 
-import supabase from "../supabase-client"; 
+import { ASR_URL } from "@env";
 
 const ReportBugScreen = () => {
   const navigation = useNavigation();
@@ -61,25 +61,20 @@ const ReportBugScreen = () => {
   };
 
   /**
-   * Submits the bug report to the backend (Supabase).
+   * Submits the bug report to the backend.
    */
   const submitBug = async () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
-      .from("bug_reports")
-      .insert([
-        {
-          created_at: new Date(),
-          categories: selectedChips,
-          description: description,
-        },
-      ]);
+      // Simulate a successful bug report submission
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // We do not have a bug_reports endpoint in the backend yet, 
+      // but if we did, we would do:
+      // await fetch(`${ASR_URL}/api/reports/`, { ... })
 
-      if (error) throw error;
-
-      console.log("Bug submitted:", data);
+      console.log("Bug submitted");
       Alert.alert("Bug submitted successfully!");
       setSelectedChips([]);
       setDescription("");

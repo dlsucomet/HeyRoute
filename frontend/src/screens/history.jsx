@@ -15,14 +15,17 @@ import Icon from "react-native-vector-icons/MaterialIcons";
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import NavBar from "../components/navbar";
-import supabase from "../supabase-client";
+import { ASR_URL } from "@env";
+
+// Hardcoded UUID for bypass authentication
+const HARDCODED_USER_ID = "11111111-1111-1111-1111-111111111111";
 
 const HistoryScreen = () => {
   const navigation = useNavigation();
 
   // --- State ---
   const [historyData, setHistoryData] = useState([]);
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState(HARDCODED_USER_ID);
   const [loading, setLoading] = useState(true);
 
   /**
@@ -35,34 +38,13 @@ const HistoryScreen = () => {
 
       const fetchUserHistory = async () => {
         try {
-          const { data: authUser } = await supabase.auth.getUser();
-
-          if (authUser?.user) {
-            let profileUserId = authUser.user.id;
-            
-            // Resolve the internal profile user_id based on the auth email
-            const { data: profile, error: profileError } = await supabase
-              .from("profiles")
-              .select("user_id")
-              .eq("email", authUser.user.email)
-              .single();
-            
-            if (profile && !profileError) profileUserId = profile.user_id;
-            
-            if (isActive) setUserId(profileUserId);
-
-            // Fetch trip history records sorted by most recent
-            const { data, error } = await supabase
-              .from("trip_history") 
-              .select("*")
-              .eq("user_id", profileUserId)
-              .order("created_at", { ascending: false });
-
-            if (error) throw error;
-            if (isActive) setHistoryData(data || []);
-          }
+          const response = await fetch(`${ASR_URL}/api/history/${HARDCODED_USER_ID}`);
+          if (!response.ok) throw new Error("Failed to fetch history");
+          
+          const data = await response.json();
+          if (isActive) setHistoryData(data || []);
         } catch (error) {
-          console.error("Error fetching history:", error);
+          console.warn("Error fetching history:", error.message);
         } finally {
           if (isActive) setLoading(false);
         }
@@ -77,7 +59,7 @@ const HistoryScreen = () => {
   );
 
   /**
-   * Deletes a record from Supabase and updates the local state to remove the item from the list without a full re-fetch.
+   * Deletes a record via API and updates the local state to remove the item from the list without a full re-fetch.
    */
   const handleDeleteHistory = async (historyId) => {
     Alert.alert("Delete History", "Are you sure you want to delete this trip?", [
@@ -87,8 +69,9 @@ const HistoryScreen = () => {
         style: "destructive",
         onPress: async () => {
           try {
-            const { error } = await supabase.from("trip_history").delete().eq("id", historyId);
-            if (error) throw error;
+            const response = await fetch(`${ASR_URL}/api/history/${historyId}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error("Failed to delete history");
+            
             // Filter out the deleted item immediately
             setHistoryData((prev) => prev.filter((item) => item.id !== historyId));
           } catch {

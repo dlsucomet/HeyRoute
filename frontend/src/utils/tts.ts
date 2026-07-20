@@ -10,7 +10,7 @@ import { ASR_URL } from "@env";
  */
 export const speakTTS = async (text: string): Promise<void> => {
   try {
-    const res = await fetch(`${ASR_URL}/speak`, {
+    const res = await fetch(`${ASR_URL}/api/tts/speak`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
