@@ -70,11 +70,8 @@ TRIP_CHANGES_PROMPT = """
    - "No, I meant NAIA Terminal 3, not Terminal 2."
 
 2. When handling updates:
-   - Update only the changed field (origin, destination, via, avoid, or option).
-   - Keep all previously confirmed details intact unless the user explicitly overrides them.
-   - If the user explicitly removes a restriction (e.g., 'I don't mind tolls anymore', 'Take any road'), you must remove that item from the `avoid` or `via` arrays.
-   - IMPORTANT: If the user changes BOTH the origin and destination, treat it as a completely new trip. CLEAR all previous `via` and `avoid` constraints unless the user explicitly states them again.
-   - If the update is ambiguous, ask for clarification before applying it.
+   - Update ALL fields based on the new details provided by the user. Do NOT reuse previous information that is not explicitly stated.
+   - IMPORTANT: If the user specified that they want to keep ANY of the information in the previous trip, still treat the update as a completely new trip albeit with previous constraints reused.
 
 3. Follow these distinctions carefully:
    a. If the user says “avoid [road/highway]” → treat this as a **avoid**.
