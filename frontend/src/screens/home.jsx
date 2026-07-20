@@ -15,12 +15,13 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native"
 import { customEvent, identifyDevice } from 'vexo-analytics';
 
-import DirectionsCard from "../components/directions-card";
+import MapBackground from "../components/map-background";
 import ActiveVoiceModal from "../components/active-voice-modal";
 import NavBar from "../components/navbar";
-import MapboxMapView from "../components/mapbox-map-view";
+import DirectionsCard from "../components/directions-card";
+import supabase from "../supabase-client";
+import { Colors } from "../theme/colors";
 import { useWakeWord } from "../hooks/useWakeWord";
-import supabase from '../supabase-client';
 import { initDeviceId, startNewSessionIfNeeded } from "../utils/session";
 
 import { PermissionsAndroid } from 'react-native';
@@ -404,7 +405,7 @@ const HomeScreen = () => {
               pressed && { opacity: 0.8, transform: [{ scale: 0.95 }] },
             ]}
           >
-            <MaterialIcons name="keyboard-voice" size={32} color="#3e0d73" />
+            <MaterialIcons name="keyboard-voice" size={32} color={Colors.textOnDark} />
           </Pressable>
         </View>
       )}
@@ -430,8 +431,8 @@ const HomeScreen = () => {
         <View style={styles.helpPanelContainer}>
           <Text style={styles.helpPanelText}> Enable Manual Input </Text>
           <Switch
-            trackColor={{ false: "#767577", true: "rgb(65, 47, 86)" }}
-            thumbColor={"#ffffff"}
+            trackColor={{ false: Colors.textMuted, true: Colors.navy }}
+            thumbColor={Colors.cream}
             onValueChange={(val) => {
               setIsHelpToggled(val);
               if (!isFirstRender.current) {
@@ -451,7 +452,7 @@ const HomeScreen = () => {
           ]}
           onPress={() => setShowHelpPanel(!showHelpPanel)}
         >
-          <MaterialIcons name="keyboard-alt" color="#9878ab" size={26} />
+          <MaterialIcons name="keyboard-alt" color={Colors.navy} size={26} />
         </Pressable>
       )}
     </SafeAreaView>
@@ -505,16 +506,16 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#4CAF50",
+    backgroundColor: Colors.success,
     marginRight: 6,
   },
   wakeWordText: {
     fontSize: 12,
-    color: "#666",
+    color: Colors.textMuted,
     fontFamily: "Karla",
   },
   voiceButton: {
-    backgroundColor: "rgb(255, 255, 255)",
+    backgroundColor: Colors.teal,
     width: 70,
     height: 70,
     borderRadius: 40,
@@ -542,7 +543,7 @@ const styles = StyleSheet.create({
   helpPanelText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#333",
+    color: Colors.navy,
     fontWeight: "500",
     marginRight: 15,
   },

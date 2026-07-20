@@ -13,6 +13,15 @@ export interface DirectionsCardProps {
   fromHistory?: boolean;
 }
 
+export interface ChatMessageType {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  isTyping?: boolean;
+  isVoiceInput?: boolean;
+}
+
 /**
  * Props expected by the ActiveVoiceModal component
  */

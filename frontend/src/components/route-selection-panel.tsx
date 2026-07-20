@@ -9,8 +9,8 @@
  */
 
 import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, Animated, Platform, ScrollView } from "react-native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { Colors } from "../theme/colors";
 
 type RouteSelectionPanelProps = {
   onStartNavigation: () => void;       // called when Start is pressed
@@ -172,10 +172,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   panelCollapsedBg: {
-    backgroundColor: "#121236",
+    backgroundColor: Colors.navy,
   },
   panelExpandedBg: {
-    backgroundColor: "#7a7a9e",
+    backgroundColor: Colors.navyLight,
   },
   handleContainer: {
     width: "100%",
@@ -195,30 +195,30 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 40 : 20,
   },
   duration: {
-    color: "#fff",
+    color: Colors.textOnDark,
     fontSize: 28,
     fontWeight: "600",
     marginBottom: 4
   },
   activeRouteText: {
-    color: "#fff",
+    color: Colors.textOnDark,
     fontSize: 16,
     opacity: 0.9,
     marginBottom: 4
   },
   activeDistanceText: {
-    color: "#aaa",
+    color: Colors.textMuted,
     fontSize: 14,
     marginBottom: 24
   },
   startButton: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.teal,
     borderRadius: 30,
     paddingVertical: 14,
     alignItems: "center",
   },
   startButtonText: {
-    color: "#121236",
+    color: Colors.textOnDark,
     fontSize: 16,
     fontWeight: "700",
     textTransform: 'uppercase',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    color: "#fff",
+    color: Colors.textOnDark,
     fontSize: 20,
     fontWeight: "700",
     marginBottom: 10,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
   },
   selectedItem: {
-    backgroundColor: "#121236",
+    backgroundColor: Colors.navy,
   },
   unselectedItem: {
     backgroundColor: "transparent",
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   routeName: {
-    color: "#fff",
+    color: Colors.textOnDark,
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 4
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   timeText: {
-    color: "#fff", 
+    color: Colors.textOnDark, 
     fontSize: 16,
     fontWeight: "500"
   },

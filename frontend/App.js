@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ActivityIndicator, AppState, PermissionsAndroid, Platform } from 'react-native';
 import { NavigationContainer as ReactNavigationContainer } from '@react-navigation/native';
+import { Colors } from './src/theme/colors';
 
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { startNewSessionIfNeeded, endSession, updateActivity } from './src/utils/session';
@@ -107,8 +108,8 @@ export default function App() {
   // Show a spinner while Supabase checks the storage for a token
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#83689f" /> 
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.cream }}>
+        <ActivityIndicator size="large" color={Colors.teal} /> 
       </View>
     );
   }

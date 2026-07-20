@@ -5,6 +5,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { View, Text, StyleSheet, Pressable, ScrollView, Linking, TouchableOpacity } from "react-native";
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Colors } from '../theme/colors';
 
 const TermsScreen = () => {
     const navigation = useNavigation();
@@ -119,13 +120,13 @@ export default TermsScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,    
-        backgroundColor: "#fff",
+        backgroundColor: Colors.cream,
     }, 
     header: {
         paddingTop: 50,
         paddingBottom: 20,
         paddingHorizontal: 20,
-        backgroundColor: '#fff',
+        backgroundColor: Colors.cream,
     },
     backButton: {
         marginBottom: 15,
@@ -140,14 +141,14 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 26,
         fontWeight: "bold",
-        color: "#1a1a1a",
+        color: Colors.navy,
     },
     mainText: {
         fontFamily: "Karla",
         fontSize: 15,
         lineHeight: 22,
         marginBottom: 25,
-        color: '#444',
+        color: Colors.navy,
         textAlign: "justify",
     },
     section: {
@@ -157,21 +158,21 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 17,
         fontWeight: "bold",
-        color: "#000",
+        color: Colors.navy,
         marginBottom: 6,
     },
     subtext: {
         fontFamily: "Karla",
         fontSize: 14,
         lineHeight: 20,
-        color: "#555",
+        color: Colors.textMuted,
         textAlign: "justify",
     },
     contactSection: {
         marginTop: 10,
         paddingTop: 20,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: Colors.sand,
     },
     contactCard: {
         marginTop: 10,
@@ -181,12 +182,12 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 14,   
         fontWeight: '600',
-        color: '#333',
+        color: Colors.navy,
     },
     emailText: {
         fontFamily: "Karla",
         fontSize: 14,   
-        color: "#007AFF",
+        color: Colors.teal,
         textDecorationLine: 'underline',
     },
 });

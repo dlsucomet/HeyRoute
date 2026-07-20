@@ -14,10 +14,10 @@ import { View, Text, StyleSheet, TextInput, Pressable, useWindowDimensions, Imag
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
-import supabase from "../supabase-client";
 import { useManualInput } from "../hooks/useManualInput";
 import { DirectionsCardProps } from "../types/navigation";
 import SaveLocationModal from "./save-location-modal";
+import { Colors } from "../theme/colors";
 
 // Icons / images 
 import StartingDot from "../assets/images/starting-dot.png";
@@ -373,7 +373,7 @@ export default DirectionsCard;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
     borderRadius: 16,
     padding: 20,
     alignSelf: "center",
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   inputWrapper: {
-    backgroundColor: "#f2f2f2",
+    backgroundColor: Colors.creamLight,
     borderRadius: 8,
     paddingHorizontal: 10,
     flexDirection: "row", 
@@ -437,10 +437,10 @@ const styles = StyleSheet.create({
     fontFamily: "Karla",
     paddingVertical: 10,
     fontSize: 14,
-    color: "#000",
+    color: Colors.textOnLight,
   },
   preferenceInputWrapper: {
-    backgroundColor: "#f2f2f2",
+    backgroundColor: Colors.creamLight,
     borderRadius: 8,
     paddingHorizontal: 10,
     flexDirection: "row", 
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     marginTop: 10,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
     borderRadius: 8,
     elevation: 4,
   },
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: Colors.separator,
   },
   suggestionTextContainer: {
     flex: 1,                    
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: '#333',
+    color: Colors.textOnLight,
     textAlign: "justify",
   },
   bookmarkButton: {
@@ -494,12 +494,12 @@ const styles = StyleSheet.create({
   fontFamily: "Karla",
   fontSize: 15,
   fontWeight: "700",
-  color: "#000",
+  color: Colors.textOnLight,
 },
 secondaryText: {
   fontFamily: "Karla",
   fontSize: 13,
-  color: "#777",
+  color: Colors.textMuted,
   marginTop: 2,
 },
 });

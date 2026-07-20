@@ -12,10 +12,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { RouteProp, useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
-import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import Geolocation from "react-native-geolocation-service";
 import { GOOGLE_MAPS_API_KEY } from "@env";
 
+import supabase from "../supabase-client";
+import { Colors } from "../theme/colors";
 import MapboxMapView from "../components/mapbox-map-view";
 import RouteSelectionPanel from "./route-selection-panel";
 import ActiveVoiceModal from "../components/active-voice-modal";
@@ -520,7 +522,7 @@ const RoutePreviewScreen = () => {
         {/* Header */}
         <View style={styles.headerCard}>
           <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#000" />
+            <MaterialIcons name="arrow-back" size={24} color={Colors.navy} />
           </Pressable>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerLabel} numberOfLines={1}>
@@ -528,7 +530,7 @@ const RoutePreviewScreen = () => {
             </Text>
             {preference ? (
               <View style={styles.preferenceBadge}>
-                <MaterialIcons name="tune" size={14} color="#7d52ae" />
+                <MaterialIcons name="tune" size={14} color={Colors.teal} />
                 <Text style={styles.preferenceText}>{preference}</Text>
               </View>
             ) : null}
@@ -574,7 +576,7 @@ const RoutePreviewScreen = () => {
             <MaterialIcons 
               name={isRecordingInModal ? "stop" : "keyboard-voice"} 
               size={32} 
-              color={isRecordingInModal ? "#fff" : "#3e0d73"} 
+              color={isRecordingInModal ? "#fff" : Colors.textOnDark} 
             />
           </Pressable>
         </View>
@@ -627,7 +629,7 @@ const RoutePreviewScreen = () => {
 
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3e0d73" />
+            <ActivityIndicator size="large" color={Colors.teal} />
             <Text style={styles.loadingText}>Fetching route geometry...</Text>
           </View>
         )}
@@ -648,7 +650,7 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
     padding: 12,
     borderRadius: 8,
     elevation: 4,
@@ -667,13 +669,13 @@ const styles = StyleSheet.create({
   headerLabel: {
     fontSize: 16, 
     fontWeight: "600", 
-    color: "#333"
+    color: Colors.navy
   },
   preferenceBadge: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
-    backgroundColor: "#f2ebfa",
+    backgroundColor: Colors.creamLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -681,7 +683,7 @@ const styles = StyleSheet.create({
   },
   preferenceText: { 
     fontSize: 12,
-    color: "#7d52ae",
+    color: Colors.teal,
     marginLeft: 4,
     fontWeight: "600",
     fontFamily: "Karla",
@@ -695,7 +697,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.95)",
+    backgroundColor: Colors.creamLight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -710,16 +712,16 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#4CAF50", 
+    backgroundColor: Colors.success, 
     marginRight: 6
   },
   wakeWordText: {
     fontSize: 11,
-    color: "#666",
+    color: Colors.textMuted,
     fontFamily: "Karla"
   },
   voiceButton: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.teal,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -733,7 +735,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    backgroundColor: Colors.overlay,
     justifyContent: "center",
     alignItems: "center",
     zIndex: 15,
@@ -741,7 +743,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 14,
-    color: "#333",
+    color: Colors.navy,
     fontWeight: "600",
     fontFamily: "Karla",
   },

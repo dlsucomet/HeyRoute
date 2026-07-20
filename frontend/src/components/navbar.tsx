@@ -7,6 +7,7 @@ import { View, Pressable, Text, StyleSheet, Modal, Platform } from "react-native
 import { useNavigation, useRoute, NavigationProp, RouteProp } from "@react-navigation/native";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Colors } from '../theme/colors';
 
 // Define the screen in navigation stack
 type RootStackParamList = {
@@ -53,7 +54,7 @@ const NavBar = ({ userId }: NavBarProps) => {
       {/* Menu Button */}
       <View style={styles.menuButtonContainer}>
         <Pressable onPress={() => setMenuVisible(true)}>
-          <MaterialIcons name="menu" size={32} color="#8c72ca" />
+          <MaterialIcons name="menu" size={32} color={Colors.navy} />
         </Pressable>
       </View>
 
@@ -83,7 +84,7 @@ const NavBar = ({ userId }: NavBarProps) => {
                   <Ionicons 
                     name={item.icon} 
                     size={22} 
-                    color={isActive ? '#ffffffff' : '#333'} 
+                    color={isActive ? Colors.textOnDark : Colors.textOnLight} 
                   />
 
                   <Text style={[ styles.menuItemText, isActive && styles.activeText ]}>
@@ -111,13 +112,13 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "#00000066",
+    backgroundColor: Colors.overlay,
     alignItems: "flex-start",
     justifyContent: "flex-start",
   },
   menuContainer: {
     marginTop: Platform.OS === "ios" ? 90 : 50,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 10,
@@ -134,7 +135,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 8,
-    color: "#000",
+    color: Colors.navy,
   },
   menuItem: {
     flexDirection: 'row', 
@@ -144,19 +145,19 @@ const styles = StyleSheet.create({
     borderRadius: 6, 
   },
   menuItemPressed: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: Colors.creamLight,
   },
   menuItemText: {
     fontFamily: "Karla",
     fontSize: 16,
-    color: "#333",
+    color: Colors.textOnLight,
     marginLeft: 15, 
   },
   menuItemActive: {
-    backgroundColor: 'rgb(125, 82, 174)', 
+    backgroundColor: Colors.navy, 
   },
   activeText: {
-    color: '#ffffffff', 
+    color: Colors.textOnDark, 
     fontWeight: '600',
   }
 });

@@ -14,6 +14,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 import supabase from '../supabase-client';
 import Logo from '../assets/images/logo-icon.png';
+import { Colors } from '../theme/colors';
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -22,8 +23,8 @@ const LoginScreen = () => {
   const [focusedInput, setFocusedInput] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const focusColor = '#83689f';
-  const defaultColor = '#8c8c8c';
+  const focusColor = Colors.teal;
+  const defaultColor = Colors.textMuted;
 
   // form states
   const [email, setEmail] = useState('');
@@ -98,7 +99,7 @@ const LoginScreen = () => {
                 value={email}
                 onChangeText={setEmail}
                 style={styles.input}
-                placeholderTextColor="#757575ff"
+                placeholderTextColor={Colors.textMuted}
                 onFocus={() => setFocusedInput('email')}  
                 onBlur={() => setFocusedInput(null)}     
               />
@@ -118,7 +119,7 @@ const LoginScreen = () => {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 style={styles.input}
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.textMuted}
                 onFocus={() => setFocusedInput('password')} 
                 onBlur={() => setFocusedInput(null)}    
               />
@@ -126,7 +127,7 @@ const LoginScreen = () => {
                 <Ionicons
                   name={showPassword ? "eye-off" : "eye"}
                   size={20}
-                  color="#8c8c8cff"
+                  color={Colors.textMuted}
                   style={styles.showPasswordIcon}
                 />
               </Pressable>
@@ -138,7 +139,7 @@ const LoginScreen = () => {
               disabled={isLoading} // to prevent from pressing multiple times
             >
               {isLoading ? (
-                <ActivityIndicator color="#ffffff" /> // show spinner when loading
+                <ActivityIndicator color={Colors.textOnDark} /> // show spinner when loading
               ) : (
                 <Text style={styles.loginButtonText}>Log In</Text>
               )}
@@ -165,7 +166,7 @@ export default LoginScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     alignItems: "center",
   },
   logo: {
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700", 
     marginBottom: 30,
-    color: "#2f2150",
+    color: Colors.navy,
   },
   input: {
     fontFamily: "Karla",
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
     fontSize: 14,
-    color: "#000",
+    color: Colors.textOnLight,
   },
   showPasswordIcon: {
     paddingHorizontal: 8,
@@ -204,15 +205,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 10,
     marginBottom: 12,
-    backgroundColor: "#E6E6E6",
+    backgroundColor: Colors.creamLight,
     width: "100%",
     paddingRight: 10,
     borderWidth: 2, 
-    borderColor: '#E6E6E6', 
+    borderColor: Colors.creamLight, 
   },
   inputFocused: {
-    borderColor: '#83689f',
-    backgroundColor: '#fff',  
+    borderColor: Colors.teal,
+    backgroundColor: Colors.cardBg,  
   },
   row: {
     flexDirection: "row",
@@ -222,7 +223,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   loginButton: {
-    backgroundColor: "#83689f",
+    backgroundColor: Colors.teal,
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 40,
@@ -231,13 +232,13 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontFamily: "Karla",
-    color: "#ffffffff",
+    color: Colors.textOnDark,
     fontSize: 16,
     fontWeight: '500', 
   },
   footerText: {
     fontFamily: "Karla",
-    color: "#090909ff",
+    color: Colors.textOnLight,
     fontSize: 14,
     marginTop: 10
   },

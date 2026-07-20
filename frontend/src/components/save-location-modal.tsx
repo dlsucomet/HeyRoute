@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Colors } from '../theme/colors';
 
 interface SaveLocationModalProps {
   visible: boolean;
@@ -84,7 +85,7 @@ const SaveLocationModal = ({ visible, suggestionItem, onClose, onSave }: SaveLoc
             placeholder="Enter category name"
             value={category}
             onChangeText={setCategory}
-            placeholderTextColor="#999"
+            placeholderTextColor={Colors.textMuted}
           />
 
           {/* Action Buttons */}
@@ -136,26 +137,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
-    color: '#333',
+    color: Colors.navy,
   },
   label: {
     fontFamily: "Karla",
     fontSize: 14,
     fontWeight: '500',
     marginBottom: 8,
-    color: '#555',
+    color: Colors.textMuted,
   },
   input: {
     fontFamily: "Karla",
     borderWidth: 1,
-    borderColor: '#CCC',
+    borderColor: Colors.sand,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
     marginBottom: 20,
-    color: '#333',
-    backgroundColor: '#FAFAFA'
+    color: Colors.navy,
+    backgroundColor: Colors.creamLight
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -168,10 +169,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   cancelButton: {
-    backgroundColor: '#E5E5EA',
+    backgroundColor: Colors.creamLight,
   },
   saveButton: {
-    backgroundColor: '#443068', 
+    backgroundColor: Colors.navy, 
   },
   buttonText: {
     fontFamily: "Karla",
@@ -182,7 +183,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontFamily: "Karla",
-    color: '#333',
+    color: Colors.navy,
     fontWeight: '600',
     fontSize: 16,
     textAlign: 'center',

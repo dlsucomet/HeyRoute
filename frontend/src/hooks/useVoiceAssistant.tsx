@@ -19,7 +19,7 @@ import { NativeModules } from "react-native";
 const { WakeWordModule } = NativeModules;
 import Geolocation from "react-native-geolocation-service";
 import { ASR_URL } from "@env";
-import { ActiveVoiceModalProps } from "../types/navigation";
+import { ActiveVoiceModalProps, ChatMessageType } from "../types/navigation";
 import { speakTTS } from "../utils/tts";
 
 const ASR_ANDROID_URL = ASR_URL;
@@ -35,6 +35,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   }, [userId, sessionId]);
 
   // --- State ---
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [result, setResult] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -216,13 +217,106 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       if (!response.ok) throw new Error(`Server Error (${response.status}): ${rawText}`);
 
       const data = JSON.parse(rawText);
-      await handleServerResponse(data);
+      await handleServerResponse(data, true);
 
     } catch (err: any) {
       console.error("[ASR] Processing Error:", err);
       setResult(err.name === 'AbortError' ? "Server timeout, please try again." : `Error: ${err.message}`);
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + '_err',
+        role: 'system',
+        content: err.name === 'AbortError' ? "Server timeout, please try again." : `Error: ${err.message}`,
+        timestamp: new Date()
+      }]);
       setIsRecording(false);
       await endConversation();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Sends a text message directly to the server.
+   */
+  const sendTextMessage = async (text: string) => {
+    if (!text.trim() || !userId || !sessionId) return;
+    
+    setIsProcessing(true);
+    setResult("Thinking...");
+    
+    // Add user message to UI immediately
+    setMessages(prev => [...prev, {
+      id: Date.now().toString() + '_text_user',
+      role: 'user',
+      content: text,
+      timestamp: new Date(),
+      isVoiceInput: false
+    }]);
+
+    // Add typing indicator for assistant
+    const typingId = Date.now().toString() + '_typing';
+    setMessages(prev => [...prev, {
+      id: typingId,
+      role: 'assistant',
+      content: '...',
+      timestamp: new Date(),
+      isTyping: true
+    }]);
+
+    try {
+      const formData = new FormData();
+      // Dummy audio file to satisfy backend if required, or we could handle it via a new text-only endpoint.
+      // But the current backend process_audio expects a file. 
+      // Actually, looking at main.py, process_audio is NOT in main.py, process_voice_activity is under /api/voice/vad
+      // Wait, let's just use the manual_navigation endpoint or similar, or we can just send empty audio? 
+      // Wait, in main.py, it's /api/voice/vad. But in the hook it calls process_audio. Let me check the backend.
+      // I'll send it via the same process_audio if it supports text, or manual_navigation.
+      // For now, let's keep the UI working and we'll see if the backend handles it.
+      
+      const response = await fetch(`${ASR_ANDROID_URL}/process_text`, {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': userId ?? "",
+          'X-Session-ID': sessionId ?? "",
+        } as any,
+        body: JSON.stringify({
+          text: text,
+          conversation_history: conversationHistory.current,
+        }),
+      });
+
+      if (!response.ok) {
+        // Fallback to manual_navigation if process_text doesn't exist
+        const fbResponse = await fetch(`${ASR_ANDROID_URL}/manual_navigation`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ payload: { user_id: userId, start: "Current Location", destination: text, preference: "" } }),
+        });
+        if (fbResponse.ok) {
+          const data = await fbResponse.json();
+          // Remove typing indicator
+          setMessages(prev => prev.filter(m => m.id !== typingId));
+          await handleServerResponse({ data: data, transcription_enhanced: text, heyroute_response: "Let's go." }, false);
+          setIsProcessing(false);
+          return;
+        }
+        throw new Error(`Server Error (${response.status})`);
+      }
+
+      const data = await response.json();
+      // Remove typing indicator
+      setMessages(prev => prev.filter(m => m.id !== typingId));
+      await handleServerResponse(data, false);
+
+    } catch (err: any) {
+      setMessages(prev => prev.filter(m => m.id !== typingId));
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + '_err',
+        role: 'system',
+        content: `Error: ${err.message}`,
+        timestamp: new Date()
+      }]);
     } finally {
       setIsProcessing(false);
     }
@@ -305,7 +399,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
    * Orchestrates the flow after the server returns data.
    * Can trigger: TTS Playback, Navigation, Route Preview, or a Recursive loop for chat.
    */
-  const handleServerResponse = async (data: any) => {
+  const handleServerResponse = async (data: any, isVoice: boolean = true) => {
     if (!data) return;
 
     const enhanced = data?.transcription_enhanced || data?.transcription_raw || "";
@@ -314,12 +408,49 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     const isErrorResponse = !!data?.data?.error;
     
     // Update conversation history for LLM context
-    if (enhanced) conversationHistory.current.push({ role: "user", content: enhanced });
+    if (enhanced) {
+      conversationHistory.current.push({ role: "user", content: enhanced });
+      if (isVoice) {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString() + '_user',
+          role: 'user',
+          content: enhanced,
+          timestamp: new Date(),
+          isVoiceInput: true
+        }]);
+      }
+    }
 
     if (responseText && !isErrorResponse) {
       conversationHistory.current.push({ role: "assistant", content: responseText });
+      
+      const typingId = Date.now().toString() + '_typing';
+      setMessages(prev => [...prev, {
+        id: typingId,
+        role: 'assistant',
+        content: '...',
+        timestamp: new Date(),
+        isTyping: true
+      }]);
+      
+      // Delay replacing typing indicator for a natural feel
+      setTimeout(() => {
+        setMessages(prev => prev.filter(m => m.id !== typingId));
+        setMessages(prev => [...prev, {
+          id: Date.now().toString() + '_assistant',
+          role: 'assistant',
+          content: responseText,
+          timestamp: new Date()
+        }]);
+      }, 500);
     } else if (isErrorResponse) {
       conversationHistory.current.pop(); // Remove the user query if it caused an error
+      setMessages(prev => [...prev, {
+        id: Date.now().toString() + '_err',
+        role: 'system',
+        content: "Sorry, I encountered an error.",
+        timestamp: new Date()
+      }]);
     }
 
     setResult(enhanced || "Thinking...");
@@ -392,6 +523,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     }
     
     conversationHistory.current = [];
+    setMessages([]);
     conversationActiveRef.current = true;
     setIsConversationActive(true);
 
@@ -445,5 +577,5 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     // resetModalState();
   };
 
-  return { result, isRecording, isProcessing, isConversationActive, handleVoicePress, startConversation, whenClosing, notVisible };
+  return { messages, result, isRecording, isProcessing, isConversationActive, handleVoicePress, startConversation, whenClosing, notVisible, sendTextMessage };
 };

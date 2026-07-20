@@ -16,6 +16,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import NavBar from "../components/navbar";
 import supabase from "../supabase-client";
+import { Colors } from '../theme/colors';
 
 const HistoryScreen = () => {
   const navigation = useNavigation();
@@ -154,7 +155,7 @@ const HistoryScreen = () => {
         <Text style={styles.title}>History</Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#83689f" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color={Colors.teal} style={{ marginTop: 20 }} />
         ) : historyData.length === 0 ? (
           <Text style={styles.emptyText}>No navigation history yet.</Text>
         ) : (
@@ -181,7 +182,7 @@ const HistoryScreen = () => {
                 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Icon name="close" size={18} color="#999" />
+                <Icon name="close" size={18} color={Colors.textMuted} />
               </Pressable>
 
               <View style={styles.row}>
@@ -212,13 +213,13 @@ export default HistoryScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     paddingHorizontal: 20,
   },
   title: {
     fontFamily: "Karla",
     fontSize: 22,
-    color: "#000",
+    color: Colors.navy,
     textAlign: "center",
     marginTop: 22, 
     marginBottom: 30,
@@ -227,20 +228,20 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "Karla",
     textAlign: "center",
-    color: "#666",
+    color: Colors.textMuted,
     fontSize: 16,
     marginTop: 20,
   },
   card: {
     borderWidth: 1,
-    borderColor: "#aaa",
+    borderColor: Colors.sand,
     borderRadius: 8,
     padding: 14,
     marginBottom: 16,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
   },
   cardPressed: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: Colors.creamLight,
     transform: [{ scale: 0.98 }],
   },
   row: {
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     fontFamily: "Karla",
     flex: 1,
     fontSize: 16,
-    color: "#000",
+    color: Colors.navy,
     fontWeight: "500",
     textAlign: "justify",
     marginTop: 5,
@@ -269,14 +270,14 @@ const styles = StyleSheet.create({
   date: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#858585",
+    color: Colors.textMuted,
     marginBottom: 6,
     marginLeft: 50,
   },
   preferenceLabel: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#3366a5",
+    color: Colors.teal,
     marginLeft: 50,
     marginBottom: 5,
     textTransform: "uppercase",
@@ -284,12 +285,12 @@ const styles = StyleSheet.create({
   preferenceValue: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#3366a5",
+    color: Colors.teal,
   },
   tapHint: {
     fontFamily: "Karla",
     fontSize: 12,
-    color: "#83689f",
+    color: Colors.teal,
   },
   deleteButton: {
     position: "absolute",

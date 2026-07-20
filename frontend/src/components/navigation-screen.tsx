@@ -5,9 +5,10 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 
 import MapboxNavigation from '@roberto497/react-native-mapbox-navigation';
 import ActiveVoiceModal from "../components/active-voice-modal";
+import MapboxNavigation from '@roberto497/react-native-mapbox-navigation';
+import ActiveVoiceModal from "../components/active-voice-modal";
 import { useWakeWord } from "../hooks/useWakeWord";
-
-const NavigationScreen = () => {
+import { Colors } from "../theme/colors";
   const navigation = useNavigation() as any;
   const route = useRoute() as any;
   const isFocused = useIsFocused();
@@ -85,7 +86,7 @@ const NavigationScreen = () => {
             setIsModalVisible(true);
           }}
         >
-          <MaterialIcons name="mic" size={28} color="#8c7cac" />
+          <MaterialIcons name="mic" size={28} color={Colors.textOnDark} />
         </Pressable>
       </View>
 
@@ -94,7 +95,7 @@ const NavigationScreen = () => {
         style={styles.stopButton} 
         onPress={() => navigation.navigate("Home")}
       >
-        <MaterialIcons name="close" size={24} color="#000" />
+        <MaterialIcons name="close" size={24} color={Colors.navy} />
       </Pressable>
 
       {/* 4. Active Voice Modal */}
@@ -127,13 +128,13 @@ const NavigationScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
   },
   stopButton: {
     position: "absolute",
     top: 130, // move down below banner
     left: 20,
-    backgroundColor: "white",
+    backgroundColor: Colors.cardBg,
     padding: 10,
     borderRadius: 20,
     elevation: 5,
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   voiceButton: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.teal,
     width: 56,
     height: 56,
     borderRadius: 28,
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   wakeWordIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    backgroundColor: Colors.creamLight,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
@@ -174,12 +175,12 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#4CAF50",
+    backgroundColor: Colors.success,
     marginRight: 5,
   },
   wakeWordText: {
     fontSize: 10,
-    color: "#666",
+    color: Colors.textMuted,
     fontWeight: "600",
   },
 });

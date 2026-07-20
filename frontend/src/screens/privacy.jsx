@@ -5,6 +5,7 @@
 import { useNavigation } from "@react-navigation/native";
 import { View, Text, StyleSheet, Pressable, ScrollView, Linking, TouchableOpacity } from "react-native";
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Colors } from '../theme/colors';
 
 const PrivacyPolicyScreen = () => {
     const navigation = useNavigation();
@@ -95,7 +96,7 @@ export default PrivacyPolicyScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,    
-        backgroundColor: "#fff",
+        backgroundColor: Colors.cream,
         paddingTop: 50, 
     }, 
     scrollView: {
@@ -113,13 +114,13 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 28,
         fontWeight: "bold",
-        color: "#1a1a1a",
+        color: Colors.navy,
         marginBottom: 5,   
     },
     lastUpdated: {
         fontFamily: "Karla",
         fontSize: 12,
-        color: "#666",
+        color: Colors.textMuted,
         marginBottom: 25,
     },
     section: {
@@ -129,21 +130,21 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 16,
         fontWeight: "700",
-        color: "#333",
+        color: Colors.navy,
         marginBottom: 8,
     },
     text: {
         fontFamily: "Karla",
         fontSize: 14,
         lineHeight: 22,
-        color: "#444",
+        color: Colors.textMuted,
         textAlign: "justify"
     },
      contactSection: {
         marginTop: 10,
         paddingTop: 20,
         borderTopWidth: 1,
-        borderTopColor: '#eee',
+        borderTopColor: Colors.sand,
     },
     contactCard: {
         marginTop: 10,
@@ -153,12 +154,12 @@ const styles = StyleSheet.create({
         fontFamily: "Karla",
         fontSize: 14,   
         fontWeight: '600',
-        color: '#333',
+        color: Colors.navy,
     },
     emailText: {
         fontFamily: "Karla",
         fontSize: 14,   
-        color: "#007AFF",
+        color: Colors.teal,
         textDecorationLine: 'underline',
     },
 });

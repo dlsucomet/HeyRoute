@@ -13,6 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 
 import supabase from '../supabase-client'; 
 import Logo from '../assets/images/logo-icon.png';
+import { Colors } from '../theme/colors';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
@@ -98,7 +99,7 @@ const SignUpScreen = () => {
               value={fullName}
               onChangeText={setFullName}
               style={[ styles.input, styles.halfInput, focusedInput === 'name' && styles.inputFocused ]}
-              placeholderTextColor="#999"
+              placeholderTextColor={Colors.textMuted}
               onFocus={() => setFocusedInput('name')} 
               onBlur={() => setFocusedInput(null)} 
             />
@@ -109,7 +110,7 @@ const SignUpScreen = () => {
               value = {email}
               onChangeText = {setEmail}
               style={[ styles.input, focusedInput === 'email' && styles.inputFocused ]}
-              placeholderTextColor="#999"
+              placeholderTextColor={Colors.textMuted}
               onFocus={() => setFocusedInput('email')}
               onBlur={() => setFocusedInput(null)} 
             />
@@ -122,7 +123,7 @@ const SignUpScreen = () => {
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 style={styles.passwordInput}
-                placeholderTextColor="#999"
+                placeholderTextColor={Colors.textMuted}
                 onFocus={() => setFocusedInput('password')} 
                 onBlur={() => setFocusedInput(null)}
               />
@@ -130,7 +131,7 @@ const SignUpScreen = () => {
                 <Ionicons
                   name={showPassword ? "eye-off" : "eye"}
                   size={20}
-                  color="#8c8c8cff"
+                  color={Colors.textMuted}
                   style={styles.icon}
                 />
               </Pressable>
@@ -180,7 +181,7 @@ export default SignUpScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     alignItems: "center",
   },
   logo: {
@@ -202,17 +203,17 @@ const styles = StyleSheet.create({
     fontWeight: '700', 
     marginTop: 30,
     marginBottom: 30,
-    color: "#2f2150",
+    color: Colors.navy,
   },
   input: {
     fontFamily: "Karla",
     width: "100%",
-    backgroundColor: "#E6E6E6",
+    backgroundColor: Colors.creamLight,
     padding: 12,
     borderRadius: 10,
     marginBottom: 12,
     borderWidth: 2, 
-    borderColor: "#E6E6E6", 
+    borderColor: Colors.creamLight, 
   },
   passwordInput: {
     fontFamily: "Karla",
@@ -220,28 +221,28 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
     fontSize: 14,
-    color: "#000",
+    color: Colors.textOnLight,
   },
   passwordWrapper: {
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 10,
     marginBottom: 12,
-    backgroundColor: "#E6E6E6",
+    backgroundColor: Colors.creamLight,
     width: "100%",
     paddingRight: 10,
     borderWidth: 2, 
-    borderColor: "#E6E6E6", 
+    borderColor: Colors.creamLight, 
   },
   inputFocused: {
-    borderColor: '#83689f',
-    backgroundColor: '#fff', 
+    borderColor: Colors.teal,
+    backgroundColor: Colors.cardBg, 
   },
   icon: {
     paddingHorizontal: 8,
   },
   loginButton: {
-    backgroundColor: "#83689f",
+    backgroundColor: Colors.teal,
     borderRadius: 30,
     paddingVertical: 12,
     paddingHorizontal: 40,
@@ -250,33 +251,33 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontFamily: "Karla",
-    color: "#ffffffff",
+    color: Colors.textOnDark,
     fontSize: 16,
   },
   footerText: {
     fontFamily: "Karla",
-    color: "#000",
+    color: Colors.textOnLight,
     fontSize: 14,
     marginTop: 5
   },
   signUpText: {
     fontFamily: "Karla",
     fontWeight: "700",
-    color: "#000",
+    color: Colors.textOnLight,
     textDecorationLine: "underline",
   },
   linkText: {
     fontFamily: "Karla",
     textDecorationLine: "underline",
     fontWeight: "600",
-    color: "#288bfd",
+    color: Colors.teal,
     fontSize: 12,
     textAlign: "justify",
   },
   termsText: {
     fontFamily: "Karla",
     fontSize: 12,
-    color: "#000",
+    color: Colors.textOnLight,
     marginTop: 5,
     marginLeft: 20,
   },

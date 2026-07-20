@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 
 import supabase from "../supabase-client";
 import NavBar from "../components/navbar";
+import { Colors } from '../theme/colors';
 
 const SavedScreen = () => {
   const navigation = useNavigation(); // Initialize navigation
@@ -163,7 +164,7 @@ const SavedScreen = () => {
         <Text style={styles.title}>Saved Locations</Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#83689f" style={{ marginTop: 20 }} />
+          <ActivityIndicator size="large" color={Colors.teal} style={{ marginTop: 20 }} />
         ) : savedData.length === 0 ? (
           <Text style={styles.emptyText}>No saved locations yet.</Text>
         ) : (
@@ -256,25 +257,25 @@ export default SavedScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     paddingHorizontal: 20,
   },
   title: {
     fontFamily: "Karla",
     fontSize: 20,
     fontWeight: "500",
-    color: "#000",
+    color: Colors.navy,
     textAlign: "center",
     marginTop: 22,
     marginBottom: 30,
   },
   card: {
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: Colors.sand,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cardBg,
   },
   row: {
     flexDirection: "row",
@@ -290,24 +291,24 @@ const styles = StyleSheet.create({
   listName: {
     fontFamily: "Karla",
     fontSize: 18,
-    color: "#000",
+    color: Colors.navy,
     marginLeft: 5,
     marginBottom: 5,
   },
   editInput: {
     fontFamily: "Karla",
     fontSize: 18,
-    color: "#000",
+    color: Colors.navy,
     marginLeft: 5,
     marginBottom: 5,
     borderBottomWidth: 1,
-    borderBottomColor: "#83689f",
+    borderBottomColor: Colors.teal,
     paddingVertical: 0,
   },
   location: {
     fontFamily: "Karla",
     fontSize: 16,
-    color: "#555",
+    color: Colors.textMuted,
     marginLeft: 5, 
   },
   actionRow: {
@@ -322,13 +323,13 @@ const styles = StyleSheet.create({
   editText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#83689f", 
+    color: Colors.teal, 
     fontWeight: "600",
   },
   deleteText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#d9534f",
+    color: Colors.error,
     fontWeight: "600",
   },
   saveText: {
@@ -349,7 +350,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontFamily: "Karla",
     textAlign: "center",
-    color: "#666",
+    color: Colors.textMuted,
     fontSize: 16,
     marginTop: 20,
   }

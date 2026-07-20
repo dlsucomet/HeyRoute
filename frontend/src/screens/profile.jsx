@@ -15,6 +15,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 
 import supabase from "../supabase-client"; 
 import NavBar from "../components/navbar";
+import { Colors } from '../theme/colors';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -146,13 +147,12 @@ export default ProfileScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "500",
-    color: "#000",
+    fontSize: 22,
+    color: Colors.navy,
     textAlign: "center",
     marginTop: 22,
     marginBottom: 30,
@@ -167,8 +167,9 @@ const styles = StyleSheet.create({
   },
   hello: {
     fontFamily: "Karla",
-    fontSize: 16,
-    color: "#333",
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.navy,
   },
   name: {
     fontFamily: "Karla",
@@ -196,9 +197,12 @@ const styles = StyleSheet.create({
   option: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.sand,
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: Colors.cardBg,
   },
   optionText: {
     fontFamily: "Karla",

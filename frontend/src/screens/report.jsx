@@ -13,6 +13,7 @@ import { View, Text, StyleSheet, Pressable, ScrollView, KeyboardAvoidingView, Pl
 import Ionicons from "react-native-vector-icons/Ionicons";
 
 import supabase from "../supabase-client"; 
+import { Colors } from '../theme/colors';
 
 const ReportBugScreen = () => {
   const navigation = useNavigation();
@@ -169,7 +170,7 @@ export default ReportBugScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: Colors.cream,
     paddingTop: 50,
   },
   scrollContainer: {
@@ -194,12 +195,12 @@ const styles = StyleSheet.create({
     marginLeft: 30,
     marginRight: 30, 
     textAlign: "justify",
-    color: "#878484",
+    color: Colors.textMuted,
   },
   chipMainText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#878484",
+    color: Colors.textMuted,
     marginLeft: 12,
   },
   chipContainer: {
@@ -211,16 +212,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 30,
-    backgroundColor: "#F2F4F7",
+    backgroundColor: Colors.creamLight,
     margin: 6,
   },
   chipSelected: {
-    backgroundColor: "#583786",
+    backgroundColor: Colors.navy,
   },
   chipText: {
     fontFamily: "Karla",
     fontSize: 14,
-    color: "#878484",
+    color: Colors.textMuted,
   },
   chipTextSelected: {
     fontFamily: "Karla",
@@ -234,12 +235,12 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginRight: 30,
     marginLeft: 30,
-    color: "#878484"
+    color: Colors.textMuted
   },
   input: {
     fontFamily: "Karla",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: Colors.separator,
     borderRadius: 10,
     padding: 12,
     marginTop: 8,
@@ -247,9 +248,11 @@ const styles = StyleSheet.create({
     marginRight: 30,
     minHeight: 100,
     textAlignVertical: "top",
+    backgroundColor: Colors.creamLight,
+    color: Colors.navy
   },
   button: {
-    backgroundColor: "#63448e",
+    backgroundColor: Colors.teal,
     padding: 16,
     borderRadius: 30,
     marginTop: 30,
@@ -263,16 +266,17 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   buttonDisabled: {
-    backgroundColor: "#C5BBD6",
+    backgroundColor: Colors.tealDark,
+    opacity: 0.5,
   },
   errorText: {
-    color: "#D11A2A",
+    color: Colors.error,
     fontSize: 13,
     marginLeft: 30,
     marginTop: 5,
   },
   required: {
-    color: "#D11A2A",
+    color: Colors.error,
     fontSize: 16,
   }
 });
