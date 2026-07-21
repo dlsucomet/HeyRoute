@@ -102,7 +102,7 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; 
           <Pressable onPress={handleClose} style={styles.closeButton}>
             <Icon name="close" size={26} color={Colors.navy} />
           </Pressable>
-          <Text style={styles.headerTitle}>HeyRoute</Text>
+          <Text style={styles.headerTitle}>Sparrow</Text>
           <View style={styles.headerRight} />
         </View>
 
@@ -122,7 +122,7 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; 
           <View style={styles.textInputContainer}>
             <TextInput
               style={styles.textInput}
-              placeholder={isRecording ? "Listening..." : "Message HeyRoute..."}
+              placeholder={isRecording ? "Listening..." : "Message Sparrow..."}
               placeholderTextColor={Colors.textMuted}
               value={inputText}
               onChangeText={setInputText}

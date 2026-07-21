@@ -76,7 +76,7 @@ export const ChatMessage = ({ message }: ChatMessageProps) => {
       )}
       
       <View style={styles.messageContent}>
-        {!isUser && <Text style={styles.assistantName}>HeyRoute</Text>}
+        {!isUser && <Text style={styles.assistantName}>Sparrow</Text>}
         
         <View style={[
           styles.bubble, 
