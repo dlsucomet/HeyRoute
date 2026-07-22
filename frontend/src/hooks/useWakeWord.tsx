@@ -41,14 +41,14 @@ export const useWakeWord = ({
   useEffect(() => {
     const subscription = wakeWordEmitter.addListener('onWakeWordDetected', (score) => {
       console.log(`\n======================================================`);
-      console.log(`🎙️ [WakeWord] "HEY ROUTE" DETECTED! (Score: ${score})`);
+      console.log(`🎙️ [WakeWord] "SPARROW" DETECTED! (Score: ${score})`);
       console.log(`======================================================\n`);
 
       if (isRecordingRef.current || isProcessingRef.current || vadModeRef.current) {
         console.log("[WakeWord] Blocked — app is busy.");
         return;
       }
-      customEvent('Interaction_Method', { type: 'wake_word_detected', keyword: 'hey_route' });
+      customEvent('Interaction_Method', { type: 'wake_word_detected', keyword: 'sparrow' });
       console.log("[WakeWord] Calling onWakeWordDetected...");
       onWakeWordDetectedRef.current();
     });

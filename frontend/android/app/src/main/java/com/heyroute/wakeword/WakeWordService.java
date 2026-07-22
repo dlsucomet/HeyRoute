@@ -24,7 +24,7 @@ public class WakeWordService {
     private static final int MEL_FEATURES = 32;
     private static final int EMB_WINDOW = 76; // Embedding model expects 76 mel frames
     private static final int EMB_FEATURES = 96;
-    private static final int HR_WINDOW = 16; // Hey Route model expects 16 embedding frames
+    private static final int WW_WINDOW = 16; // Wake word model expects 16 embedding frames
     private static final float DETECTION_THRESHOLD = 0.5f;
     
     private ReactApplicationContext reactContext;
@@ -34,7 +34,7 @@ public class WakeWordService {
 
     private Interpreter melspectrogramInterpreter;
     private Interpreter embeddingInterpreter;
-    private Interpreter heyRouteInterpreter;
+    private Interpreter sparrowInterpreter;
 
     /**
      * Flat mel-spectrogram accumulation buffer.
@@ -65,7 +65,7 @@ public class WakeWordService {
         try {
             melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"));
             embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"));
-            heyRouteInterpreter = new Interpreter(loadModelFile("hey_route.tflite"));
+            sparrowInterpreter = new Interpreter(loadModelFile("sparrow.tflite"));
             Log.d(TAG, "OpenWakeWord Models loaded successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error loading TFLite models", e);
@@ -201,7 +201,7 @@ public class WakeWordService {
 
                         // Accumulate embedding into feature buffer
                         if (featureBufferSize >= FEATURE_BUFFER_MAX) {
-                            int keep = HR_WINDOW;
+                            int keep = WW_WINDOW;
                             System.arraycopy(featureBuffer, featureBufferSize - keep,
                                     featureBuffer, 0, keep);
                             featureBufferSize = keep;
@@ -215,16 +215,16 @@ public class WakeWordService {
                         // Stage 3: Wake Word Detection
                         // Only run once we have accumulated enough embeddings (16+)
                         // ============================================================
-                        if (featureBufferSize >= HR_WINDOW) {
+                        if (featureBufferSize >= WW_WINDOW) {
                             // Build input from the LAST 16 embedding frames
-                            float[][][] hrInput = new float[1][HR_WINDOW][EMB_FEATURES];
-                            int hrStartIdx = featureBufferSize - HR_WINDOW;
-                            for (int i = 0; i < HR_WINDOW; i++) {
-                                System.arraycopy(featureBuffer[hrStartIdx + i], 0, hrInput[0][i], 0, EMB_FEATURES);
+                            float[][][] wwInput = new float[1][WW_WINDOW][EMB_FEATURES];
+                            int wwStartIdx = featureBufferSize - WW_WINDOW;
+                            for (int i = 0; i < WW_WINDOW; i++) {
+                                System.arraycopy(featureBuffer[wwStartIdx + i], 0, wwInput[0][i], 0, EMB_FEATURES);
                             }
 
                             float[][] scoreOutput = new float[1][1];
-                            heyRouteInterpreter.run(hrInput, scoreOutput);
+                            sparrowInterpreter.run(wwInput, scoreOutput);
 
                             float score = scoreOutput[0][0];
 
