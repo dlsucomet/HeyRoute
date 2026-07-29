@@ -68,7 +68,7 @@ const NavigationScreen = () => {
         exclude={exclude_string}
         showsEndOfRouteFeedback={true}
         onArrive={handleArrival}
-        onCancelNavigation={() => navigation.navigate("Home")}
+        onCancelNavigation={() => navigation.navigate("Home", { openChat: true, resetSession: true })}
       />
 
       {/* 2. Floating Mic Button for Voice Commands */}
@@ -76,7 +76,7 @@ const NavigationScreen = () => {
         {wakeWordActive && (
           <View style={styles.wakeWordIndicator}>
             <View style={styles.listeningDot} />
-            <Text style={styles.wakeWordText}>Listening for "Hey Route"</Text>
+            <Text style={styles.wakeWordText}>Listening for "Sparrow"</Text>
           </View>
         )}
         <Pressable
@@ -93,7 +93,7 @@ const NavigationScreen = () => {
       {/* 3. Stop Navigation Button (Top Left) */}
       <Pressable 
         style={styles.stopButton} 
-        onPress={() => navigation.navigate("Home")}
+        onPress={() => navigation.navigate("Home", { openChat: true, resetSession: true })}
       >
         <MaterialIcons name="close" size={24} color={Colors.navy} />
       </Pressable>

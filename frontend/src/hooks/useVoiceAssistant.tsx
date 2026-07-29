@@ -583,18 +583,17 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     if (heyrouteData?.route_preview) {
       console.log("[ASR] Route preview available.");
 
-      // Tell the next screen to listen, but we play the TTS immediately here!
       heyrouteData.continue_listening = true;
       if (responseText && !isErrorResponse) {
-        heyrouteData.route_preview_tts = null; // Prevent RoutePreview from playing it again
-        playTTS(responseText).catch(console.error);
+        // Pass the TTS directly to the Route Preview screen so it plays it while showing the map
+        heyrouteData.route_preview_tts = responseText;
       }
 
       setTimeout(async () => {
         isTransitioningRef.current = true;
         await endConversation(true);
         onRoutePreview?.(heyrouteData);
-      }, 5000); // Wait 5 seconds so the user can read the chat
+      }, 800); // 0.8s snappy transition to let the user see the text briefly
       return;
     }
 
