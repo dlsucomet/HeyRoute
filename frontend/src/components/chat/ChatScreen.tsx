@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; headlessMode?: boolean }) => {
   const { 
     isVisible, onClose, userId, sessionId, onTranscriptionComplete, 
-    onNavigationTriggered, onRoutePreview, onResponse, autoStartVadMode
+    onNavigationTriggered, onRoutePreview, onResponse, onCancellation, autoStartVadMode
   } = props;
   
   const [inputText, setInputText] = useState('');
@@ -29,7 +29,7 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; 
     sendTextMessage
   } = useVoiceAssistant({
     userId, sessionId, visible: isVisible, onClose,
-    onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse,
+    onTranscriptionComplete, onNavigationTriggered, onRoutePreview, onResponse, onCancellation,
   });
 
   // Pulse animation for recording state
@@ -78,14 +78,7 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; 
     setInputText('');
   };
 
-  // Ensure scroll to bottom on new messages
-  useEffect(() => {
-    if (messages.length > 0 && flatListRef.current) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
-  }, [messages.length, messages[messages.length - 1]?.isTyping]);
+
 
   if (props.headlessMode) {
     return null;
@@ -109,12 +102,12 @@ export const ChatScreen = (props: ActiveVoiceModalProps & { isVisible: boolean; 
         {/* Chat List */}
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={[...messages].reverse()}
+          inverted={true}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <ChatMessage message={item} />}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
         {/* Input Area */}

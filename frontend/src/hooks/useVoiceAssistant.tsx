@@ -93,11 +93,14 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
   // Refs used to maintain state across render cycles without triggering re-renders
   const conversationActiveRef = useRef(false);
   const conversationHistory = useRef<{ role: string; content: string }[]>([]);
+  const isTransitioningRef = useRef(false);
 
   // Ensure the microphone and player are released
   useEffect(() => {
     return () => {
-      whenClosing().catch(() => {});
+      if (!isTransitioningRef.current) {
+        whenClosing().catch(() => {});
+      }
     };
   }, []);
 
@@ -588,6 +591,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
       }
 
       setTimeout(async () => {
+        isTransitioningRef.current = true;
         await endConversation(true);
         onRoutePreview?.(heyrouteData);
       }, 5000); // Wait 5 seconds so the user can read the chat
