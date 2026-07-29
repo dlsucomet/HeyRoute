@@ -20,7 +20,7 @@ import time
 import httpx
 import polyline
 from typing import List
-from adapters.adapter import APIAdapter
+from adapters.adapter import APIAdapter, format_duration_mins
 from adapters.openrouteservice_adapter import extract_via_road, sample_smartly
 
 
@@ -323,8 +323,8 @@ class GoogleRoutesAdapter(APIAdapter):
                 "start":           origin,
                 "end":             destination,
                 "distance":        f"{distance_km} km",
-                "duration":        f"{duration_mins} mins",    # traffic-aware ETA
-                "static_duration": f"{static_mins} mins",      # no-traffic ETA (bonus)
+                "duration":        format_duration_mins(duration_mins),    # traffic-aware ETA
+                "static_duration": format_duration_mins(static_mins),      # historical ETA (bonus)
                 "full_geometry":   full_coords,
                 "matching_coords": matching_coords,
                 "waypoint_indices": mapbox_waypoints,

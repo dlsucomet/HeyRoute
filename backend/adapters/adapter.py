@@ -24,3 +24,10 @@ class APIAdapter(ABC):
     ) -> dict:
         """Return routing directions from origin to destination."""
         pass
+
+def format_duration_mins(minutes: int) -> str:
+    hours = minutes // 60
+    remaining_mins = minutes % 60
+    if hours > 0:
+        return f"{hours} hr {remaining_mins} mins" if remaining_mins > 0 else f"{hours} hr"
+    return f"{minutes} mins"

@@ -19,7 +19,7 @@ from rdp import rdp
 from typing import List
 from shapely.geometry import LineString, MultiPolygon
 from collections import Counter
-from adapters.adapter import APIAdapter
+from adapters.adapter import APIAdapter, format_duration_mins
 from db import load_polygons, store_polygons
 
 # OpenStreetMap Overpass API endpoint for fetching road geometries and nearby features
@@ -475,7 +475,7 @@ class OpenRouteServiceAdapter(APIAdapter):
                 "start": origin,
                 "end": destination,
                 "distance": f"{int(summary['distance']/1000)} km",
-                "duration": f"{int(summary['duration']/60)} mins",
+                "duration": format_duration_mins(int(summary['duration']/60)),
                 "full_geometry": full_coords,
                 "matching_coords": matching_coords,
                 "waypoint_indices": mapbox_waypoints,

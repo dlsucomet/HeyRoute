@@ -18,7 +18,7 @@ import httpx
 import polyline
 import numpy as np
 from typing import List
-from adapters.adapter import APIAdapter
+from adapters.adapter import APIAdapter, format_duration_mins
 from adapters.openrouteservice_adapter import extract_via_road, sample_smartly, get_road_polygon
 from db import load_polygons, store_polygons
 from shapely.geometry import Point
@@ -326,8 +326,8 @@ class MapboxDirectionsAdapter(APIAdapter):
                 "start":           origin,
                 "end":             destination,
                 "distance":        f"{distance_km} km",
-                "duration":        f"{duration_mins} mins",
-                "static_duration": f"{static_mins} mins",
+                "duration":        format_duration_mins(duration_mins),
+                "static_duration": format_duration_mins(static_mins),
                 "full_geometry":   full_coords,
                 "matching_coords": matching_coords,
                 "waypoint_indices": mapbox_waypoints,
