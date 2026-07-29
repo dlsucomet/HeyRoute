@@ -584,7 +584,10 @@ const RoutePreviewScreen = () => {
           sessionId={sessionId}
           visible={isModalVisible}
           onClose={closeModal}
-          onCancellation={closeModal}
+          onCancellation={() => {
+            closeModal();
+            (navigation as any).navigate("Home", { openChat: true, resetSession: true });
+          }}
           onTranscriptionComplete={handleTranscription}
           onNavigationTriggered={handleNavigationTriggered}
           onRoutePreview={handleRoutePreviewTriggered}

@@ -562,7 +562,7 @@ export const useVoiceAssistant = (props: ActiveVoiceModalProps) => {
     }
 
     // Cancellation Trigger
-    if (heyrouteData?.cancellation === true) {
+    if (heyrouteData?.intents?.cancellation === true) {
       console.log("[ASR] Cancellation intent detected.");
       
       if (responseText && !isErrorResponse) {

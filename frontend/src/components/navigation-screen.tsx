@@ -112,13 +112,11 @@ const NavigationScreen = () => {
         onRecordingStateChange={setIsRecordingInModal}
         onProcessingStateChange={setIsProcessingInModal}
         onVadModeChange={setVadModeActive}
-        onResponse={(res: any) => {
-          // If the AI wants to cancel navigation
-          if (res?.intents?.cancellation) {
-            navigation.navigate("Home");
-          }
-          // The Navigation SDK handles rerouting natively, 
-          // but we can still listen for trip_changes here if needed.
+        onCancellation={() => {
+          setIsModalVisible(false);
+          setVadModeActive(false);
+          shouldAutoStartVadMode.current = false;
+          navigation.navigate("Home", { openChat: true, resetSession: true });
         }}
       />
     </View>
