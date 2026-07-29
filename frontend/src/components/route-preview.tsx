@@ -547,7 +547,7 @@ const RoutePreviewScreen = () => {
           {wakeWordActive && !isRecordingInModal && !isProcessingInModal && (
             <View style={styles.wakeWordIndicator}>
               <View style={styles.listeningDot} />
-              <Text style={styles.wakeWordText}>Say "Hey Route"</Text>
+              <Text style={styles.wakeWordText}>Say "Sparrow"</Text>
             </View>
           )}
           {isRecordingInModal && !isProcessingInModal && (
@@ -584,6 +584,7 @@ const RoutePreviewScreen = () => {
           sessionId={sessionId}
           visible={isModalVisible}
           onClose={closeModal}
+          onCancellation={closeModal}
           onTranscriptionComplete={handleTranscription}
           onNavigationTriggered={handleNavigationTriggered}
           onRoutePreview={handleRoutePreviewTriggered}

@@ -10,14 +10,18 @@ const ActiveVoiceModal = (props: ActiveVoiceModalProps) => {
     console.log("[Modal] Received identity props:", { userId, sessionId });
   }, [userId, sessionId]);
 
+  if (props.hideUI) {
+    return <ChatScreen {...props} isVisible={visible} headlessMode={true} />;
+  }
+
   return (
     <Modal
       animationType="slide"
-      transparent={props.hideUI ?? false} // Headless mode (transparent) if hideUI is true
+      transparent={false}
       visible={visible}
       onRequestClose={onClose}
     >
-      <ChatScreen {...props} isVisible={visible} headlessMode={props.hideUI} />
+      <ChatScreen {...props} isVisible={visible} headlessMode={false} />
     </Modal>
   );
 };
