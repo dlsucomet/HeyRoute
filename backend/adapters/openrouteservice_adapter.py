@@ -280,22 +280,21 @@ class OpenRouteServiceAdapter(APIAdapter):
         self.directions_url = "https://api.openrouteservice.org/v2/directions/driving-car"
 
     # ---------- Geocoding ----------
-    async def geocode(self, place_name: str) -> dict:
+    async def geocode(self, place_name: str, bias_lat: float = None, bias_lng: float = None) -> dict:
         """
         Geocodes a place name to latitude and longitude (coordinates).
-
-        Returns:
-            dict: {lat, lng}, if geocoding is successful
-            None if geocoding fails or no results are found.
         """
-
         if not place_name:
             return None
+
+        # Call Geoapify geocoding API
         params = {
             "text": place_name, 
             "apiKey": self.geoapify_api_key,
             "filter": "countrycode:ph"
         }
+        if bias_lat is not None and bias_lng is not None:
+            params["bias"] = f"proximity:{bias_lng},{bias_lat}"
 
         try:
             resp = await self.client.get(self.geocode_url, params=params)

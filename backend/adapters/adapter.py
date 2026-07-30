@@ -3,8 +3,8 @@ from typing import List
 
 class APIAdapter(ABC):
     @abstractmethod
-    async def geocode(self, place_name: str) -> dict:
-        """Convert a place name to coordinates."""
+    async def geocode(self, place_name: str, bias_lat: float = None, bias_lng: float = None) -> dict:
+        """Convert a place name to coordinates, optionally biased by a location."""
         pass
 
     @abstractmethod

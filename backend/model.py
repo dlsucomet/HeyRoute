@@ -344,6 +344,9 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 tasks = []
                 task_mapping = {}
 
+                bias_lat = state.current_location["lat"] if state.current_location else None
+                bias_lng = state.current_location["lng"] if state.current_location else None
+
                 # Origin
                 if state.semantic_context["origin_known"]:
                     origin_coords = state.semantic_context["origin_value"]
@@ -354,7 +357,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                         origin_coords = state.current_location
                     else:
                         task_mapping["origin"] = len(tasks)
-                        tasks.append(adapter.geocode(origin))
+                        tasks.append(adapter.geocode(origin, bias_lat=bias_lat, bias_lng=bias_lng))
 
                 # Destination
                 if state.semantic_context["destination_known"]:
@@ -364,7 +367,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 else:
                     destination = state.final_gpt_response["destination"]
                     task_mapping["destination"] = len(tasks)
-                    tasks.append(adapter.geocode(destination))
+                    tasks.append(adapter.geocode(destination, bias_lat=bias_lat, bias_lng=bias_lng))
 
                 # Via points
                 via_coords = []
@@ -373,7 +376,7 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                     task_mapping["via_start"] = len(tasks)
                     for place in via_input:
                         if place.strip():
-                            tasks.append(adapter.geocode(place.strip()))
+                            tasks.append(adapter.geocode(place.strip(), bias_lat=bias_lat, bias_lng=bias_lng))
 
                 start_time = time.perf_counter()
                 results = await asyncio.gather(*tasks)

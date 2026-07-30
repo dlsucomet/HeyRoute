@@ -44,7 +44,7 @@ class MapboxDirectionsAdapter(APIAdapter):
         self.directions_url_base = "https://api.mapbox.com/directions/v5/mapbox"
 
     # ---------- Geocoding ----------
-    async def geocode(self, place_name: str) -> dict:
+    async def geocode(self, place_name: str, bias_lat: float = None, bias_lng: float = None) -> dict:
         if not place_name:
             return None
         params = {
@@ -52,6 +52,8 @@ class MapboxDirectionsAdapter(APIAdapter):
             "apiKey": self.geoapify_api_key,
             "filter": "countrycode:ph"
         }
+        if bias_lat is not None and bias_lng is not None:
+            params["bias"] = f"proximity:{bias_lng},{bias_lat}"
         try:
             resp = await self.client.get(self.geocode_url, params=params)
             if resp.status_code == 200:

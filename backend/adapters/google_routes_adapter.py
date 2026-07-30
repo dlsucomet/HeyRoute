@@ -97,20 +97,20 @@ class GoogleRoutesAdapter(APIAdapter):
         self.directions_url = "https://routes.googleapis.com/directions/v2:computeRoutes"
 
     # ---------- Geocoding ----------
-    async def geocode(self, place_name: str) -> dict:
+    async def geocode(self, place_name: str, bias_lat: float = None, bias_lng: float = None) -> dict:
         """
         Geocodes a place name to latitude and longitude using Geoapify.
-
-        Returns:
-            dict: {lat, lng} if successful, None otherwise.
         """
         if not place_name:
             return None
+
         params = {
             "text": place_name, 
             "apiKey": self.geoapify_api_key,
             "filter": "countrycode:ph"
         }
+        if bias_lat is not None and bias_lng is not None:
+            params["bias"] = f"proximity:{bias_lng},{bias_lat}"
         try:
             resp = await self.client.get(self.geocode_url, params=params)
             if resp.status_code == 200:
