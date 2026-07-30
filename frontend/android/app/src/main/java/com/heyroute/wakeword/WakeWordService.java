@@ -65,7 +65,7 @@ public class WakeWordService {
         try {
             melspectrogramInterpreter = new Interpreter(loadModelFile("melspectrogram.tflite"));
             embeddingInterpreter = new Interpreter(loadModelFile("embedding_model.tflite"));
-            sparrowInterpreter = new Interpreter(loadModelFile("sparrow.tflite"));
+            sparrowInterpreter = new Interpreter(loadModelFile("spahrrow.tflite"));
             Log.d(TAG, "OpenWakeWord Models loaded successfully");
         } catch (Exception e) {
             Log.e(TAG, "Error loading TFLite models", e);
