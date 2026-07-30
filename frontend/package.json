@@ -9,8 +9,8 @@
     "start": "react-native start",
     "test": "jest",
     "postinstall": "patch-package",
-    "build:apk": "cd android && (gradlew assembleRelease || ./gradlew assembleRelease)",
-    "build:apk:arm64": "cd android && (gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a || ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a)",
+    "build:apk": "node build-apk.js --universal",
+    "build:apk:arm64": "node build-apk.js",
     "build:apk:debug": "cd android && (gradlew assembleDebug -PbundleInDebug=true || ./gradlew assembleDebug -PbundleInDebug=true)",
     "install:apk": "cd android && (gradlew installRelease || ./gradlew installRelease)",
     "install:apk:arm64": "cd android && (gradlew installRelease -PreactNativeArchitectures=arm64-v8a || ./gradlew installRelease -PreactNativeArchitectures=arm64-v8a)"
