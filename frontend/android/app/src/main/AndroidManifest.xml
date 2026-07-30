@@ -21,6 +21,7 @@
         android:name=".MainApplication"
         android:label="@string/app_name"
         android:icon="@mipmap/heyroute_icon"
+        android:roundIcon="@mipmap/heyroute_icon_round"
         android:allowBackup="false"
         android:usesCleartextTraffic="true" 
         android:theme="@style/AppTheme">

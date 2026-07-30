@@ -69,5 +69,8 @@
   "allowScripts": {
     "postinstall-postinstall@2.1.0": true,
     "react-native-nitro-modules@0.30.2": true
+  },
+  "overrides": {
+    "brace-expansion": "5.0.8"
   }
 }
