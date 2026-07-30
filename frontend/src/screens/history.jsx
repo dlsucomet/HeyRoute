@@ -17,6 +17,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import NavBar from "../components/navbar";
 import supabase from "../supabase-client";
 import { Colors } from '../theme/colors';
+import SaveToListModal from "../components/save-to-list-modal";
 
 const HistoryScreen = () => {
   const navigation = useNavigation();
@@ -25,6 +26,9 @@ const HistoryScreen = () => {
   const [historyData, setHistoryData] = useState([]);
   const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const [saveModalVisible, setSaveModalVisible] = useState(false);
+  const [routeToSave, setRouteToSave] = useState(null);
 
   /**
    * useFocusEffect ensures that history is refreshed every time the user 
@@ -199,11 +203,33 @@ const HistoryScreen = () => {
 
               <View style={styles.cardActions}>
                 <Text style={styles.tapHint}>Tap to navigate</Text>
+                <Pressable
+                  style={styles.saveButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setRouteToSave(item);
+                    setSaveModalVisible(true);
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="bookmark-outline" size={20} color={Colors.primary} />
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </Pressable>
               </View>
             </Pressable>
           ))
         )}
       </ScrollView>
+
+      {/* Save to List Modal */}
+      <SaveToListModal
+        visible={saveModalVisible}
+        onClose={() => {
+          setSaveModalVisible(false);
+          setRouteToSave(null);
+        }}
+        routeItem={routeToSave}
+      />
     </SafeAreaView>
   );
 };
@@ -301,8 +327,25 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
     alignItems: "center",
     marginTop: 10,
   },
+  saveButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.creamLight,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.sand,
+  },
+  saveButtonText: {
+    fontFamily: "Karla",
+    fontSize: 14,
+    color: Colors.primary,
+    marginLeft: 4,
+    fontWeight: "bold",
+  }
 });
