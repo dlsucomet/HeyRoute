@@ -212,8 +212,8 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
         current_turn = state.increment_turn()
         user_input = payload.transcript.strip()
         if not user_input:
-            # Instead of crashing, just return a polite request to speak again
-            return {"heyroute": "I didn't catch that. Could you say it again?", "history": state.conversation_history, "turn_number": current_turn, "intents": {}}
+            # End conversation to prevent an infinite loop of empty audio inputs
+            return {"heyroute": "I didn't catch that.", "conversation_ended": True, "history": state.conversation_history, "turn_number": current_turn, "intents": {}}
         state.conversation_history.append({"role": "user", "content": user_input})
         
         # ----------  Semantic Resolution ----------

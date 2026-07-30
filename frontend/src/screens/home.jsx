@@ -161,7 +161,12 @@ const HomeScreen = () => {
         setDestination("");
         navigation.setParams({ resetSession: undefined });
       }
-    }, [route.params?.resetSession])
+      if (route.params?.openChat) {
+        setIsModalVisible(true);
+        setOpenForHistory(true);
+        navigation.setParams({ openChat: undefined });
+      }
+    }, [route.params?.resetSession, route.params?.openChat])
   );
 
   /**
@@ -370,8 +375,8 @@ const HomeScreen = () => {
    * This forces a global reset by backing out to the Home screen and clearing the session.
    */
   const handleCancellation = async () => {
-    setIsModalVisible(false);
-    setOpenForHistory(false);
+    setIsModalVisible(true);
+    setOpenForHistory(true);
     const newSessionId = await forceNewSession();
     setSessionId(newSessionId);
     navigation.popToTop(); // Forcefully strip away RoutePreview and NavigationScreen
