@@ -24,6 +24,7 @@ import supabase from "../supabase-client";
 import { Colors } from "../theme/colors";
 import { useWakeWord } from "../hooks/useWakeWord";
 import { initDeviceId, startNewSessionIfNeeded, forceNewSession } from "../utils/session";
+import { fetchRouteForNavigation } from "../utils/route-fetcher";
 
 import { PermissionsAndroid } from 'react-native';
 
@@ -48,6 +49,7 @@ const HomeScreen = () => {
   const [openForHistory, setOpenForHistory] = useState(false);
   const [isHelpToggled, setIsHelpToggled] = useState(false);
   const [micGranted, setMicGranted] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState(false);
 
   const [isRecordingInModal, setIsRecordingInModal] = useState(false);
   const [isProcessingInModal, setIsProcessingInModal] = useState(false);
@@ -191,18 +193,39 @@ const HomeScreen = () => {
 
   /**
    * When arriving from the History Screen, pre-populate the navigation state 
-   * and automatically trigger the DirectionCard's search logic.
+   * and automatically trigger the route calculation silently in the background.
    */
   useEffect(() => {
     if (route.params?.prefillDestination) {
-      setDestination(route.params.prefillDestination);
-      setStart(route.params.prefillStart || "Current Location");
-      setIsHelpToggled(true);
-      setAutoTriggerNav(true);
-      setFromHistoryNav(route.params.fromHistory || false);
+      const fetchAndNavigate = async () => {
+        setLoadingRoute(true);
+        const dest = route.params.prefillDestination;
+        const st = route.params.prefillStart || "Current Location";
+        const fromHist = route.params.fromHistory || false;
+        
+        // Ensure userId is fetched if it hasn't been yet (sometimes race conditions occur)
+        let currentUserId = userId;
+        if (!currentUserId) {
+          const { data } = await supabase.auth.getUser();
+          currentUserId = data?.user?.id || null;
+        }
 
-      // Clean up params so a screen refresh doesn't trigger prefill again
-      navigation.setParams({ prefillDestination: undefined, prefillStart: undefined, fromHistory: undefined });
+        const routeData = await fetchRouteForNavigation(st, dest, "", currentUserId);
+        
+        setLoadingRoute(false);
+        navigation.setParams({ prefillDestination: undefined, prefillStart: undefined, fromHistory: undefined });
+        
+        if (routeData) {
+           navigation.navigate("RoutePreview", {
+              ...routeData,
+              fromHistory: fromHist,
+           });
+        } else {
+           console.warn("Failed to fetch route for auto-launch.");
+        }
+      };
+
+      fetchAndNavigate();
     }
   }, [route.params?.prefillDestination]);
 
@@ -446,6 +469,13 @@ const HomeScreen = () => {
         </View>
       )}
 
+      {loadingRoute && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Calculating Route...</Text>
+        </View>
+      )}
+
        {!keyboardVisible && (
         <View style={styles.micContainer}>
           {wakeWordActive && (
@@ -620,4 +650,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 5,
   },
+  summaryContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 900,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingText: {
+    fontFamily: 'Karla',
+    fontSize: 16,
+    color: Colors.primary,
+    marginTop: 12,
+    fontWeight: 'bold',
+  }
 });
