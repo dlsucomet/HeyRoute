@@ -341,6 +341,9 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                 origin_coords = None
                 destination_coords = None
                 destination = None
+                via_coords = []
+                
+                # Step 1: Geocode Origin and Destination
                 tasks = []
                 task_mapping = {}
 
@@ -355,7 +358,8 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                     origin = state.final_gpt_response.get("origin")
                     if origin == "current location" and state.current_location:
                         origin_coords = state.current_location
-                    else:
+                    elif origin:
+                        origin = await normalize_road_name(origin)
                         task_mapping["origin"] = len(tasks)
                         tasks.append(adapter.geocode(origin, bias_lat=bias_lat, bias_lng=bias_lng))
 
@@ -365,31 +369,39 @@ async def heyroute(payload: TranscriptRequest, user_id: str = Header(None, alias
                     state.final_gpt_response["destination"] = state.semantic_context["destination_label"]
                     destination = state.final_gpt_response["destination"]
                 else:
-                    destination = state.final_gpt_response["destination"]
-                    task_mapping["destination"] = len(tasks)
-                    tasks.append(adapter.geocode(destination, bias_lat=bias_lat, bias_lng=bias_lng))
-
-                # Via points
-                via_coords = []
-                via_input = state.final_gpt_response.get("via")
-                if via_input:
-                    task_mapping["via_start"] = len(tasks)
-                    for place in via_input:
-                        if place.strip():
-                            tasks.append(adapter.geocode(place.strip(), bias_lat=bias_lat, bias_lng=bias_lng))
+                    destination = state.final_gpt_response.get("destination")
+                    if destination:
+                        destination = await normalize_road_name(destination)
+                        task_mapping["destination"] = len(tasks)
+                        tasks.append(adapter.geocode(destination, bias_lat=bias_lat, bias_lng=bias_lng))
 
                 start_time = time.perf_counter()
-                results = await asyncio.gather(*tasks)
+                if tasks:
+                    results = await asyncio.gather(*tasks)
+                    if "origin" in task_mapping:
+                        origin_coords = results[task_mapping["origin"]]
+                    if "destination" in task_mapping:
+                        destination_coords = results[task_mapping["destination"]]
+
+                # Step 2: Geocode Via points using Destination as bias
+                via_tasks = []
+                via_input = state.final_gpt_response.get("via")
+                
+                via_bias_lat = destination_coords["lat"] if destination_coords else bias_lat
+                via_bias_lng = destination_coords["lng"] if destination_coords else bias_lng
+                
+                if via_input:
+                    for place in via_input:
+                        if place.strip():
+                            normalized_place = await normalize_road_name(place.strip())
+                            via_tasks.append(adapter.geocode(normalized_place, bias_lat=via_bias_lat, bias_lng=via_bias_lng))
+                
+                if via_tasks:
+                    via_results = await asyncio.gather(*via_tasks)
+                    via_coords = [r for r in via_results if r]
+                
                 end_time = time.perf_counter()
                 geocode_latency = (end_time - start_time) * 1000
-
-                if "origin" in task_mapping:
-                    origin_coords = results[task_mapping["origin"]]
-                if "destination" in task_mapping:
-                    destination_coords = results[task_mapping["destination"]]
-                if "via_start" in task_mapping:
-                    # Everything from via_start to the end of results belongs to 'via'
-                    via_coords = [r for r in results[task_mapping["via_start"]:] if r]
 
                 if not origin_coords or not destination_coords:
                     response  = "I couldn't find your destination. Could you be more specific?"

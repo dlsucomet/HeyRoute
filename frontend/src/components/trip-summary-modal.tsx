@@ -31,6 +31,10 @@ const TripSummaryModal: React.FC<TripSummaryModalProps> = ({
     if (onSubmitRating) {
       onSubmitRating(stars);
     }
+    // Auto-close after 2 seconds
+    setTimeout(() => {
+      onClose();
+    }, 2000);
   };
 
   const renderStars = () => {
@@ -50,9 +54,9 @@ const TripSummaryModal: React.FC<TripSummaryModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} transparent={true} animationType="slide">
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        <Pressable style={styles.modalContainer} onPress={(e) => e.stopPropagation()}>
           {/* Header Icon */}
           <View style={styles.iconContainer}>
             <MaterialIcons name="check-circle" size={56} color={Colors.success} />
@@ -100,8 +104,8 @@ const TripSummaryModal: React.FC<TripSummaryModalProps> = ({
           <Pressable style={styles.doneButton} onPress={onClose}>
             <Text style={styles.doneButtonText}>Done</Text>
           </Pressable>
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };
