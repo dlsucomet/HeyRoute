@@ -36,6 +36,7 @@ When outputting the final travel JSON, you MUST return it exactly in this format
   "avoid": [], // should always be an array. DO NOT invent or guess constraints. ONLY avoid things if the user EXPLICITLY asks to avoid them.
   "option": "" // either "fastest", "shortest", or "recommended". If the user does not specify, default to "recommended". DO NOT assume "fastest" unless requested.
 }
+If the user specifies a 'via' or 'avoid' road that is a generic street name (e.g., "3rd avenue", "main street"), automatically append the destination's city or area to it in the JSON array (e.g., "3rd avenue near [destination name]") so it can be accurately geocoded.
 """
 
 SEMANTICS_PROMPT = """
@@ -79,10 +80,12 @@ TRIP_CHANGES_PROMPT = """
          * "tolls" → "tollways"  
          * "highways" → "highways"  
          * "ferries" → "ferries"
+      - If the road is a generic name (e.g. "3rd avenue"), append the destination area to it (e.g. "3rd avenue near [destination]").
       Example: “Avoid EDSA & tolls.”  
       JSON: {"origin": "<existing>", "destination": "<existing>", "via": "<existing>", "avoid": "EDSA, tollways", "option": "<existing>"}
 
    b. If the user says “via [road/highway/route]” or “take [road/highway]” or any additional waypoints → treat this as a **via route**.  
+      - If the road is a generic name (e.g. "3rd avenue"), append the destination area to it (e.g. "3rd avenue near [destination]").
       Example: “Let's go using EDSA.”  
       JSON: {"origin": "<existing>", "destination": "<existing>", "via": "EDSA", "avoid": "<existing>", "option": "<existing>"}
 
