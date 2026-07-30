@@ -22,9 +22,9 @@ const targetLabel = isUniversal ? 'Universal (all ABIs)' : 'arm64-v8a (Modern An
 console.log(`[INFO] Target Architecture: ${targetLabel}`);
 console.log(`[1/2] Running ${gradlewCmd} assembleRelease...\n`);
 
+const cmdStr = [gradlewCmd, 'assembleRelease', ...archFlag].join(' ');
 const result = spawnSync(
-  gradlewCmd,
-  ['assembleRelease', ...archFlag],
+  cmdStr,
   { cwd: androidDir, stdio: 'inherit', shell: true }
 );
 
