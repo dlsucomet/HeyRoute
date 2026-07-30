@@ -56,8 +56,13 @@ const NavigationScreen = () => {
 
   const handleArrival = () => {
     console.log("Arrived at destination!");
-    // Go back or go to a summary screen
-    navigation.navigate("Home");
+    navigation.navigate("Home", {
+      showTripSummary: true,
+      summaryDestination: typeof route.params?.destination === 'string' ? route.params.destination : "Your Destination",
+      summaryDistance: route.params?.routeDistance,
+      summaryDuration: route.params?.routeDuration,
+      summaryVia: route.params?.routeVia,
+    });
   };
 
   return (

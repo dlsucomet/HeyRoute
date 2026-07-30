@@ -17,6 +17,7 @@ import { customEvent, identifyDevice } from 'vexo-analytics';
 
 import DirectionsCard from "../components/directions-card";
 import ActiveVoiceModal from "../components/active-voice-modal";
+import TripSummaryModal from "../components/trip-summary-modal";
 import NavBar from "../components/navbar";
 import MapboxMapView from "../components/mapbox-map-view";
 import supabase from "../supabase-client";
@@ -59,6 +60,10 @@ const HomeScreen = () => {
 
   const [autoTriggerNav, setAutoTriggerNav] = useState(false);
   const [fromHistoryNav, setFromHistoryNav] = useState(false);
+
+  // --- Post-Trip Summary State ---
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryData, setSummaryData] = useState({});
 
   // Control refs for passing auto-start triggers to the Modal
   const shouldAutoStartRecording = useRef(false);
@@ -145,6 +150,21 @@ const HomeScreen = () => {
   useEffect(() => {
     isFirstRender.current = false;
   }, []);
+
+  useEffect(() => {
+    if (route.params?.showTripSummary) {
+      setSummaryData({
+        destination: route.params?.summaryDestination,
+        distance: route.params?.summaryDistance,
+        duration: route.params?.summaryDuration,
+        routeVia: route.params?.summaryVia,
+      });
+      setShowSummary(true);
+      
+      // Clear the params so it doesn't reopen unexpectedly
+      navigation.setParams({ showTripSummary: false });
+    }
+  }, [route.params]);
 
   /**
    * Reset session when returning from a cancelled navigation or when explicitly requested
@@ -481,6 +501,20 @@ const HomeScreen = () => {
           <MaterialIcons name="chat" color={Colors.navy} size={26} />
         </Pressable>
       )}
+
+      {/* Post Trip Summary Modal */}
+      <TripSummaryModal 
+        visible={showSummary}
+        onClose={() => setShowSummary(false)}
+        destination={summaryData.destination}
+        distance={summaryData.distance}
+        duration={summaryData.duration}
+        routeVia={summaryData.routeVia}
+        onSubmitRating={async (rating) => {
+           console.log("Trip Rating submitted:", rating);
+           customEvent("trip_rating", { rating });
+        }}
+      />
     </SafeAreaView>
   );
 };
